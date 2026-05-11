@@ -54,8 +54,12 @@ def register(cli: click.Group) -> None:
         "{{ p.name | flag }}",
         "{{ p.name | pyident }}",
         type={{ p | clicktype }},
+{% if p.default is not none %}
+        default={{ p.default | pyrepr }},
+        show_default=True,
+{% else %}
         required={{ "True" if p.required else "False" }},
-        {% if p.default is not none %}default={{ p.default | tojson }},{% endif %}
+{% endif %}
         help={{ (p.description or "Query parameter") | tojson }},
     )
     {% elif p.location == "header" %}

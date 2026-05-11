@@ -77,7 +77,17 @@ class PythonCLIGenerator:
         env.filters["cmd"] = cli_command_name
         env.filters["pytype"] = _python_type
         env.filters["clicktype"] = _click_type
-        env.filters["pyident"] = lambda s: s.replace("-", "_").replace(".", "_")
+        import re as _re
+        _ident_re = _re.compile(r"[^A-Za-z0-9_]+")
+
+        def _pyident(s: str) -> str:
+            out = _ident_re.sub("_", str(s))
+            if out and out[0].isdigit():
+                out = "_" + out
+            return out or "_"
+        env.filters["pyident"] = _pyident
+        # repr() yields a valid Python literal for scalars (True/False/None/...)
+        env.filters["pyrepr"] = lambda v: repr(v)
 
         pkg_name = (spec.name + "_dt_cli").replace("-", "_")
         cli_bin = f"{spec.name}-dt-cli"

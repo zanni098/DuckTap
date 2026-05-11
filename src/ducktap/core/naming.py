@@ -19,12 +19,23 @@ def slugify(text: str) -> str:
     return _SLUG_RE.sub("-", norm.lower()).strip("-")
 
 
+_NON_IDENT_RE = re.compile(r"[^A-Za-z0-9_]+")
+
+
 def snake_case(text: str) -> str:
-    """API-style operation ids: `listPets` -> `list_pets`, `Foo-Bar` -> `foo_bar`."""
-    s = text.replace("-", "_").replace(" ", "_")
-    s = _SNAKE_RE_1.sub(r"\1_\2", s)
+    """API-style operation ids: `listPets` -> `list_pets`, `Foo-Bar` -> `foo_bar`.
+
+    All non-identifier characters (slashes, dots, colons, at-signs, etc.) are
+    collapsed to underscores so the result is a legal Python identifier.
+    Leading digits are prefixed with `_`.
+    """
+    s = _SNAKE_RE_1.sub(r"\1_\2", text)
     s = _SNAKE_RE_2.sub(r"\1_\2", s)
-    return s.lower().strip("_")
+    s = _NON_IDENT_RE.sub("_", s)
+    s = re.sub(r"__+", "_", s).lower().strip("_")
+    if s and s[0].isdigit():
+        s = "_" + s
+    return s
 
 
 def kebab_case(text: str) -> str:

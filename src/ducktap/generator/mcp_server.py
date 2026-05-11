@@ -68,7 +68,15 @@ class MCPServerGenerator:
         )
         env.filters["flag"] = flag_name
         env.filters["cmd"] = cli_command_name
-        env.filters["pyident"] = lambda s: s.replace("-", "_").replace(".", "_")
+        import re as _re
+        _ident_re = _re.compile(r"[^A-Za-z0-9_]+")
+
+        def _pyident(s: str) -> str:
+            out = _ident_re.sub("_", str(s))
+            if out and out[0].isdigit():
+                out = "_" + out
+            return out or "_"
+        env.filters["pyident"] = _pyident
 
         pkg_name = (spec.name + "_dt_mcp").replace("-", "_")
         bin_name = f"{spec.name}-dt-mcp"

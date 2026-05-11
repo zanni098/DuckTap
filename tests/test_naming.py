@@ -20,6 +20,19 @@ def test_snake_case():
     assert snake_case("kebab-case-name") == "kebab_case_name"
 
 
+def test_snake_case_sanitizes_non_idents():
+    # Real-world operationIds from the GitHub spec
+    assert snake_case("meta/root") == "meta_root"
+    assert snake_case("repos/get") == "repos_get"
+    assert snake_case("apps:list-installations") == "apps_list_installations"
+    # Always yields a legal Python identifier
+    import keyword
+    for raw in ["meta/root", "foo.bar.baz", "weird@thing", "1leadingDigit"]:
+        s = snake_case(raw)
+        assert s.replace("_", "a").isidentifier() or s.isidentifier()
+        assert not keyword.iskeyword(s)
+
+
 def test_kebab_case():
     assert kebab_case("listPets") == "list-pets"
 
