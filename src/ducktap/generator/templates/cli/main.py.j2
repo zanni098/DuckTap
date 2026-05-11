@@ -1,0 +1,41 @@
+"""Entrypoint for {{ cli_bin }}."""
+from __future__ import annotations
+
+import click
+
+from .commands import register
+
+
+@click.group(
+    name="{{ cli_bin }}",
+    help="""{{ spec.display_name or spec.name }} — agent-native CLI.
+
+{{ spec.description }}
+
+Auth: set the env var(s) below before running:
+{% for s in spec.auth_schemes %}  - {{ s.env_var }}  ({{ s.type }}{% if s.description %} — {{ s.description }}{% endif %})
+{% endfor %}
+""",
+)
+@click.option("--json/--no-json", "as_json", default=True,
+              help="Emit raw JSON (default) vs pretty.")
+@click.option("--pretty", "pretty", is_flag=True, default=False,
+              help="Pretty-print with rich tables / colors.")
+@click.option("--cache/--no-cache", default=True,
+              help="Use local SQLite mirror for GET requests.")
+@click.option("--cache-ttl", type=int, default=300, show_default=True,
+              help="Mirror TTL in seconds.")
+@click.version_option(version=__import__("{{ pkg_name }}").__version__)
+@click.pass_context
+def cli(ctx: click.Context, as_json: bool, pretty: bool, cache: bool, cache_ttl: int) -> None:
+    ctx.ensure_object(dict)
+    ctx.obj["format"] = "pretty" if pretty else "json"
+    ctx.obj["cache"] = cache
+    ctx.obj["cache_ttl"] = cache_ttl
+
+
+register(cli)
+
+
+if __name__ == "__main__":
+    cli()

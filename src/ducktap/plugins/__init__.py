@@ -1,0 +1,1 @@
+"""External plugin namespace package."""

@@ -1,0 +1,27 @@
+{
+  "name": "{{ skill_name }}",
+  "version": "{{ spec.version }}",
+  "binary": "{{ cli_bin }}",
+  "mcp_binary": "{{ mcp_bin }}",
+  "tools": [
+    {% for op in spec.operations %}
+    {
+      "name": "{{ op.operation_id | cmd }}",
+      "description": {{ (op.summary or op.description or op.method + " " + op.path) | tojson }},
+      "method": "{{ op.method }}",
+      "path": "{{ op.path }}",
+      "parameters": [
+        {% for p in op.params %}
+        {
+          "name": "{{ p.name }}",
+          "in": "{{ p.location }}",
+          "type": "{{ p.type }}",
+          "required": {{ "true" if p.required else "false" }},
+          "description": {{ (p.description or '') | tojson }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+      ]
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+}

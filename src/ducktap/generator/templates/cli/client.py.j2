@@ -1,0 +1,102 @@
+"""HTTP client for {{ spec.display_name or spec.name }}.
+
+DuckTap-generated. Reads credentials from env vars; emits JSON; retries on
+transient errors; mirrors responses into local SQLite for compound queries.
+"""
+from __future__ import annotations
+
+import os
+import time
+from typing import Any
+
+import httpx
+
+from .mirror import Mirror
+
+BASE_URL = os.environ.get("{{ spec.name|upper|replace('-', '_') }}_BASE_URL", "{{ spec.base_url }}")
+DEFAULT_TIMEOUT = float(os.environ.get("{{ spec.name|upper|replace('-', '_') }}_TIMEOUT", "30"))
+
+
+class APIError(RuntimeError):
+    def __init__(self, status: int, body: Any):
+        super().__init__(f"HTTP {status}: {body}")
+        self.status = status
+        self.body = body
+
+
+class Client:
+    def __init__(self, base_url: str | None = None, timeout: float | None = None,
+                 mirror: Mirror | None = None):
+        self.base_url = (base_url or BASE_URL).rstrip("/")
+        self.timeout = timeout or DEFAULT_TIMEOUT
+        self.mirror = mirror
+        self._client = httpx.Client(timeout=self.timeout, follow_redirects=True)
+
+    def _auth_headers(self) -> dict[str, str]:
+        h: dict[str, str] = {}
+        {% for s in spec.auth_schemes %}
+        # {{ s.name }} ({{ s.type }})
+        {% if s.type == "apiKey" and s.location == "header" %}
+        v = os.environ.get("{{ s.env_var }}")
+        if v:
+            h["{{ s.parameter_name }}"] = v
+        {% elif s.type == "http" %}
+        v = os.environ.get("{{ s.env_var }}")
+        if v:
+            h["Authorization"] = "{{ s.scheme|title }} " + v
+        {% elif s.type in ("oauth2", "openIdConnect") %}
+        v = os.environ.get("{{ s.env_var }}")
+        if v:
+            h["Authorization"] = "Bearer " + v
+        {% endif %}
+        {% endfor %}
+        return h
+
+    def request(self, method: str, path: str,
+                query: dict[str, Any] | None = None,
+                headers: dict[str, str] | None = None,
+                json_body: Any | None = None,
+                use_cache: bool = False) -> Any:
+        url = self.base_url + path
+        hdrs = self._auth_headers()
+        if headers:
+            hdrs.update({k: str(v) for k, v in headers.items() if v is not None})
+        params = {k: v for k, v in (query or {}).items() if v is not None}
+
+        cache_key = None
+        if use_cache and method.upper() == "GET" and self.mirror is not None:
+            cache_key = self.mirror.key(method, url, params)
+            cached = self.mirror.get(cache_key)
+            if cached is not None:
+                return cached
+
+        last_err: Exception | None = None
+        for attempt in range(3):
+            try:
+                r = self._client.request(method, url, params=params, headers=hdrs, json=json_body)
+                if r.status_code >= 500 and attempt < 2:
+                    time.sleep(0.5 * (attempt + 1))
+                    continue
+                if r.status_code >= 400:
+                    try:
+                        body = r.json()
+                    except Exception:
+                        body = r.text
+                    raise APIError(r.status_code, body)
+                try:
+                    data = r.json()
+                except Exception:
+                    data = r.text
+                if cache_key is not None and self.mirror is not None:
+                    self.mirror.put(cache_key, data)
+                return data
+            except (httpx.TransportError, httpx.TimeoutException) as e:
+                last_err = e
+                if attempt < 2:
+                    time.sleep(0.5 * (attempt + 1))
+                    continue
+                raise
+        raise last_err  # type: ignore[misc]
+
+    def close(self) -> None:
+        self._client.close()

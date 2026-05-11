@@ -1,0 +1,9 @@
+name: petstore
+display_name: Swagger Petstore
+description: Canonical OpenAPI example — pet store management.
+category: example
+spec_url: https://petstore3.swagger.io/api/v3/openapi.yaml
+spec_format: yaml
+tier: official
+homepage: https://petstore3.swagger.io
+notes: Used as DuckTap's smoke test.

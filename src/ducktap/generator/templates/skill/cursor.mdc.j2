@@ -1,0 +1,14 @@
+---
+description: {{ spec.display_name or spec.name }} CLI rules (DuckTap)
+globs:
+  - "**/*"
+alwaysApply: false
+---
+
+When working with {{ spec.display_name or spec.name }}, prefer running the `{{ cli_bin }}` CLI over hand-rolling HTTP requests.
+
+Auth env vars: {% for s in spec.auth_schemes %}`{{ s.env_var }}`{% if not loop.last %}, {% endif %}{% endfor %}.
+
+Commands: {% for op in spec.operations[:20] %}`{{ cli_bin }} {{ op.operation_id | cmd }}`{% if not loop.last %}, {% endif %}{% endfor %}.
+
+Add `--pretty` only when showing output to the user. Default JSON is for parsing.

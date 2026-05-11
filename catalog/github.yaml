@@ -1,0 +1,9 @@
+name: github
+display_name: GitHub REST
+description: Full GitHub REST v3 API surface — repos, issues, PRs, actions, search.
+category: developer
+spec_url: https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/api.github.com/api.github.com.json
+spec_format: json
+tier: official
+homepage: https://docs.github.com/rest
+notes: Large spec (~1000 endpoints). Use `--targets python-cli` to skip MCP if tools list is too long for your harness.

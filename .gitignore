@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.eggs/
+dist/
+build/
+*.egg
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# DuckTap working dirs
+.ducktap/
+output/
+out/
+generated/
+*.duckdb
+*.sqlite
+*.sqlite3
+*.har
+
+# Secrets
+.env
+.env.local
+*.pem

@@ -1,0 +1,19 @@
+"""Smoke test: the generated CLI imports and `--help` works."""
+from click.testing import CliRunner
+
+from {{ pkg_name }}.main import cli
+
+
+def test_help() -> None:
+    runner = CliRunner()
+    result = runner.invoke(cli, ["--help"])
+    assert result.exit_code == 0
+    assert "{{ cli_bin }}" in result.output
+
+
+def test_subcommands_registered() -> None:
+    runner = CliRunner()
+    result = runner.invoke(cli, ["--help"])
+    {% for op in operations[:5] %}
+    assert "{{ op.operation_id | cmd }}" in result.output
+    {% endfor %}

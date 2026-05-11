@@ -1,0 +1,65 @@
+"""SQLite mirror — local cache of API responses for compound queries."""
+from __future__ import annotations
+
+import hashlib
+import json
+import os
+import sqlite3
+import time
+from pathlib import Path
+from typing import Any
+
+
+def _mirror_dir() -> Path:
+    home = Path(os.environ.get("DUCKTAP_HOME", str(Path.home() / ".ducktap")))
+    p = home / "{{ spec.name }}"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+class Mirror:
+    def __init__(self, ttl_seconds: int = 300, path: str | None = None):
+        self.ttl = ttl_seconds
+        self.path = path or str(_mirror_dir() / "mirror.sqlite")
+        self.conn = sqlite3.connect(self.path)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS responses (
+                key TEXT PRIMARY KEY,
+                body TEXT NOT NULL,
+                fetched_at REAL NOT NULL
+            )
+        """)
+        self.conn.commit()
+
+    @staticmethod
+    def key(method: str, url: str, params: dict[str, Any] | None) -> str:
+        h = hashlib.sha256()
+        h.update(method.upper().encode())
+        h.update(b"\0")
+        h.update(url.encode())
+        h.update(b"\0")
+        h.update(json.dumps(params or {}, sort_keys=True, default=str).encode())
+        return h.hexdigest()
+
+    def get(self, key: str) -> Any | None:
+        row = self.conn.execute(
+            "SELECT body, fetched_at FROM responses WHERE key = ?", (key,)
+        ).fetchone()
+        if not row:
+            return None
+        body, ts = row
+        if self.ttl and time.time() - ts > self.ttl:
+            return None
+        return json.loads(body)
+
+    def put(self, key: str, value: Any) -> None:
+        self.conn.execute(
+            "INSERT OR REPLACE INTO responses(key, body, fetched_at) VALUES (?, ?, ?)",
+            (key, json.dumps(value, default=str), time.time()),
+        )
+        self.conn.commit()
+
+    def clear(self) -> int:
+        cur = self.conn.execute("DELETE FROM responses")
+        self.conn.commit()
+        return cur.rowcount

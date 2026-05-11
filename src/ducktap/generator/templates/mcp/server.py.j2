@@ -1,0 +1,102 @@
+"""MCP server exposing {{ spec.display_name or spec.name }} as MCP tools.
+
+Uses the official `mcp` Python SDK over stdio. Each tool routes to the same
+HTTP client used by the companion CLI ({{ cli_bin }}).
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+from typing import Any
+
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
+from mcp.types import TextContent, Tool
+
+from {{ cli_pkg }}.client import Client, APIError
+from {{ cli_pkg }}.mirror import Mirror
+
+
+TOOLS: list[Tool] = [
+    {% for t in tools %}
+    Tool(
+        name="{{ t.name }}",
+        description={{ t.description | tojson }},
+        inputSchema={{ t.input_schema | tojson }},
+    ),
+    {% endfor %}
+]
+
+
+_client: Client | None = None
+
+
+def _client_singleton() -> Client:
+    global _client
+    if _client is None:
+        _client = Client(mirror=Mirror(ttl_seconds=300))
+    return _client
+
+
+def _dispatch(tool: str, args: dict[str, Any]) -> Any:
+    {% for t in tools %}
+    {% set op = t.op %}
+    if tool == "{{ t.name }}":
+        path = "{{ op.path }}"
+        {% for p in op.params if p.location == "path" %}
+        path = path.replace("{{ '{' + p.name + '}' }}", str(args.get("{{ p.name }}")))
+        {% endfor %}
+        query = { {% for p in op.params if p.location == "query" %}"{{ p.name }}": args.get("{{ p.name }}"),{% endfor %} }
+        query = {k: v for k, v in query.items() if v is not None}
+        headers = { {% for p in op.params if p.location == "header" %}"{{ p.name }}": args.get("{{ p.name }}"),{% endfor %} }
+        headers = {k: v for k, v in headers.items() if v is not None}
+        body: Any = None
+        {% set bps = op.params | selectattr("location", "equalto", "body") | list %}
+        {% if bps %}
+        body = { {% for p in bps %}"{{ p.name }}": args.get("{{ p.name }}"),{% endfor %} }
+        body = {k: v for k, v in body.items() if v is not None} or None
+        {% endif %}
+        return _client_singleton().request(
+            "{{ op.method }}", path,
+            query=query, headers=headers, json_body=body,
+            use_cache=("{{ op.method }}" == "GET"),
+        )
+    {% endfor %}
+    raise ValueError(f"unknown tool: {tool}")
+
+
+def build_server() -> Server:
+    app: Server = Server("{{ bin_name }}")
+
+    @app.list_tools()
+    async def _list() -> list[Tool]:
+        return TOOLS
+
+    @app.call_tool()
+    async def _call(name: str, arguments: dict[str, Any]) -> list[TextContent]:
+        try:
+            result = await asyncio.to_thread(_dispatch, name, arguments or {})
+            return [TextContent(type="text", text=json.dumps(result, default=str, indent=2))]
+        except APIError as e:
+            return [TextContent(
+                type="text",
+                text=json.dumps(
+                    {"error": str(e), "status": e.status, "body": e.body},
+                    default=str, indent=2,
+                ),
+            )]
+
+    return app
+
+
+def main() -> None:
+    async def _run() -> None:
+        server = build_server()
+        async with stdio_server() as (read, write):
+            await server.run(read, write, server.create_initialization_options())
+
+    asyncio.run(_run())
+
+
+if __name__ == "__main__":
+    main()

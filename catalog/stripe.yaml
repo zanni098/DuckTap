@@ -1,0 +1,8 @@
+name: stripe
+display_name: Stripe API
+description: Payments, customers, subscriptions, invoices, products, prices.
+category: payments
+spec_url: https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json
+spec_format: json
+tier: official
+homepage: https://stripe.com/docs/api
