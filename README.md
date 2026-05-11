@@ -73,9 +73,14 @@ ducktap press ./capture.har --name myapi
 # 3. From a website with no public spec
 ducktap sniff https://example.com
 
-# 4. From the curated catalog
+# 4. From the curated catalog (built-in or community)
 ducktap catalog list
 ducktap catalog print stripe
+
+# 4b. Use the community library (https://github.com/zanni098/ducktap-library)
+git clone https://github.com/zanni098/ducktap-library ~/ducktap-library
+export DUCKTAP_CATALOG=~/ducktap-library
+ducktap catalog list      # now shows the full library too
 
 # 5. Browse + drive everything from the dashboard
 ducktap ui    # http://127.0.0.1:8765
