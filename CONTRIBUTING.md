@@ -5,7 +5,7 @@ Thanks for your interest! DuckTap is MIT-licensed and welcomes PRs.
 ## Dev setup
 
 ```bash
-git clone https://github.com/yourname/ducktap
+git clone https://github.com/zanni098/DuckTap
 cd ducktap
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e ".[dev,sniff]"

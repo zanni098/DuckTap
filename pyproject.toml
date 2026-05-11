@@ -50,9 +50,9 @@ dev = [
 ducktap = "ducktap.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/yourname/ducktap"
-Repository = "https://github.com/yourname/ducktap"
-Issues = "https://github.com/yourname/ducktap/issues"
+Homepage = "https://github.com/zanni098/DuckTap"
+Repository = "https://github.com/zanni098/DuckTap"
+Issues = "https://github.com/zanni098/DuckTap/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ducktap"]

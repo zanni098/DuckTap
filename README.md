@@ -5,7 +5,7 @@
 > file, or a plain website, and it *prints* a Python CLI, an MCP server, and a
 > Claude/Cursor/Codex skill — wired up, cached, scored, ready to ship.
 
-[![CI](https://github.com/yourname/ducktap/actions/workflows/ci.yml/badge.svg)](https://github.com/yourname/ducktap/actions/workflows/ci.yml)
+[![CI](https://github.com/zanni098/DuckTap/actions/workflows/ci.yml/badge.svg)](https://github.com/zanni098/DuckTap/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](pyproject.toml)
 
@@ -28,7 +28,7 @@ the traffic when no spec exists, and prints:
 ## Install
 
 ```bash
-git clone https://github.com/yourname/ducktap
+git clone https://github.com/zanni098/DuckTap
 cd ducktap
 pip install -e ".[dev]"
 ducktap --version
