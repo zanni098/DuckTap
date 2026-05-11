@@ -51,6 +51,42 @@ def test_press_petstore_end_to_end(out_dir):
     assert sc.grade in {"A", "B", "C", "D", "F"}
 
 
+def test_generated_packages_actually_import(out_dir):
+    """Stronger test: import the generated packages as packages so relative
+    imports resolve and bound-identifier errors (e.g. JSON `false` inside a
+    Python literal) surface here, not only when a user runs the CLI."""
+    import importlib
+    import sys
+
+    press(str(FIXTURE), str(out_dir), name="petstore")
+
+    cli_root = str(out_dir / "petstore-dt-cli")
+    mcp_root = str(out_dir / "petstore-dt-mcp")
+    sys.path.insert(0, cli_root)
+    sys.path.insert(0, mcp_root)
+    # Drop any previously-imported petstore_* modules (from a sibling test)
+    for k in list(sys.modules):
+        if k.startswith(("petstore_dt_cli", "petstore_dt_mcp")):
+            del sys.modules[k]
+    try:
+        for modname in (
+            "petstore_dt_cli",
+            "petstore_dt_cli.client",
+            "petstore_dt_cli.mirror",
+            "petstore_dt_cli.commands",
+            "petstore_dt_cli.main",
+            "petstore_dt_mcp",
+            "petstore_dt_mcp.server",
+        ):
+            try:
+                importlib.import_module(modname)
+            except Exception as e:
+                pytest.fail(f"{modname} failed to import: {e!r}")
+    finally:
+        sys.path.remove(cli_root)
+        sys.path.remove(mcp_root)
+
+
 def test_shipcheck_petstore(out_dir):
     press(str(FIXTURE), str(out_dir), name="petstore")
     results = shipcheck(str(out_dir), "petstore")

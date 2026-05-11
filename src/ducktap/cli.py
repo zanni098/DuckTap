@@ -44,7 +44,7 @@ def _root(
     pass
 
 
-@app.command()
+@app.command("press")
 def press_cmd(
     source: str = typer.Argument(..., help="OpenAPI URL/file, HAR file, or website URL"),
     out: Path = typer.Option(Path("./out"), "--out", "-o", help="Output directory"),
@@ -69,8 +69,7 @@ def press_cmd(
         console.print(f"  - {s.dimension}: {s.score} — {s.notes}")
 
 
-# Convenience alias matching PP's `printing-press` verbs
-app.command(name="press")(press_cmd)
+# (no alias needed; the command is named "press" directly)
 
 
 @app.command()
