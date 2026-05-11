@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DuckTap — Tape any API to your agent</title>
+  <meta name="description" content="DuckTap is a CLI factory for AI agents. Print agent-native CLIs, MCP servers, and skills from any OpenAPI spec, HAR file, or website.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container nav-inner">
+      <a href="#" class="logo">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="28" height="28" rx="7" fill="url(#logoGrad)"/>
+          <path d="M8 20V14.5C8 13.5 8.5 13 9.5 13H11.5C12.5 13 13 13.5 13 14.5V20" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <path d="M13 14.5V11C13 10 13.5 9.5 14.5 9.5H16.5C17.5 9.5 18 10 18 11V20" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="18.5" cy="8.5" r="1.5" fill="white"/>
+          <defs>
+            <linearGradient id="logoGrad" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#0EA5E9"/>
+              <stop offset="1" stop-color="#6366F1"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <span>DuckTap</span>
+      </a>
+      <div class="nav-links" id="navLinks">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How it works</a>
+        <a href="#install">Install</a>
+        <a href="https://github.com/zanni098/DuckTap" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://pypi.org/project/ducktap/" target="_blank" rel="noopener">PyPI</a>
+      </div>
+      <a href="https://github.com/zanni098/DuckTap" class="btn btn-sm btn-primary" target="_blank" rel="noopener">Star on GitHub</a>
+      <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </nav>
+
+  <header class="hero">
+    <div class="hero-bg"></div>
+    <div class="container">
+      <div class="hero-content">
+        <div class="badge">
+          <span class="badge-dot"></span>
+          v0.1.1 — Now on PyPI
+        </div>
+        <h1>Tape any API to your agent<br>in <span class="accent">one command</span></h1>
+        <p class="hero-subtitle">
+          DuckTap prints agent-native <strong>CLIs</strong>, <strong>MCP servers</strong>, and
+          <strong>skills</strong> from any OpenAPI spec, HAR file, or website.
+          Muscle memory for agents. No bespoke code required.
+        </p>
+        <div class="hero-ctas">
+          <a href="#install" class="btn btn-primary btn-lg">Get Started</a>
+          <a href="https://github.com/zanni098/DuckTap" class="btn btn-outline btn-lg" target="_blank" rel="noopener">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.135-.3-.54-1.53.105-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.28-1.56 3.3-1.23 3.3-1.23.645 1.65.24 2.88.105 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            View on GitHub
+          </a>
+        </div>
+      </div>
+
+      <div class="terminal-wrap">
+        <div class="terminal">
+          <div class="terminal-header">
+            <div class="terminal-dots">
+              <span class="dot red"></span>
+              <span class="dot yellow"></span>
+              <span class="dot green"></span>
+            </div>
+            <span class="terminal-title">ducktap</span>
+          </div>
+          <div class="terminal-body">
+            <div class="line"><span class="prompt">$</span> <span class="cmd">pip install ducktap</span></div>
+            <div class="line"><span class="prompt">$</span> <span class="cmd">ducktap press</span> <span class="arg">https://petstore3.swagger.io/api/v3/openapi.yaml</span></div>
+            <div class="line output">Pressed petstore (19 operations) -> out</div>
+            <div class="line output">  python-cli: 10 files</div>
+            <div class="line output">  mcp-server: 5 files</div>
+            <div class="line output">  skill:      3 files</div>
+            <div class="line output"></div>
+            <div class="line output accent-line">Scorecard: 92/100 (A)</div>
+            <div class="line output">  - coverage:      95  - 19 operations exposed</div>
+            <div class="line output">  - documentation: 100 - 19/19 operations have docs</div>
+            <div class="line output">  - auth:          100 - 2 auth scheme(s)</div>
+            <div class="line output">  - artifacts:     100 - 3/3 expected dirs present</div>
+            <div class="line"><span class="prompt">$</span> <span class="cursor">|</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="features" id="features">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Features</span>
+        <h2>Everything an agent needs,<br>generated in seconds</h2>
+        <p>DuckTap fuses the best ideas from the agent-CLI playbook and adds multi-LLM reach, a plugin ecosystem, and a local dashboard.</p>
+      </div>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          </div>
+          <h3>OpenAPI & HAR</h3>
+          <p>Point at a spec or recorded browser traffic. DuckTap normalizes every endpoint into a clean, agent-friendly CLI.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+          </div>
+          <h3>Browser Sniffing</h3>
+          <p>No public API? No problem. Playwright drives the site, captures traffic, and reverse-engineers a CLI from the HAR.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <h3>MCP Server</h3>
+          <p>Every printed CLI ships with a matching MCP server. Drop it into Claude Desktop, Cursor, or any MCP-aware agent.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          </div>
+          <h3>Multi-Agent Skills</h3>
+          <p>Claude Code SKILL.md, Cursor .mdc rules, and a generic tools.json — so every harness can invoke your CLI.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          </div>
+          <h3>Multi-LLM</h3>
+          <p>Via LiteLLM: Claude, GPT-4, Gemini, local Ollama, Groq, Azure. Pick your model with an env var.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h3>Plugin System</h3>
+          <p>Register discoverers and generators via Python entry points. Ship improvements as PyPI packages, not forks.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="how-it-works" id="how-it-works">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">How it works</span>
+        <h2>One lean loop</h2>
+        <p>From any input to a ship-ready CLI in four steps.</p>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Discover</h3>
+          <p>Parse an OpenAPI spec, a HAR file, or drive a headless browser through a website to capture its API.</p>
+        </div>
+        <div class="step-arrow"></div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Normalize</h3>
+          <p>All inputs collapse into one <code>APISpec</code> — DuckTap's intermediate model. Typed, validated, Pydantic.</p>
+        </div>
+        <div class="step-arrow"></div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Generate</h3>
+          <p>Emit a Python CLI, an MCP server, and agent skill manifests — all from the same spec, via Jinja2 templates.</p>
+        </div>
+        <div class="step-arrow"></div>
+        <div class="step">
+          <div class="step-num">4</div>
+          <h3>Ship</h3>
+          <p>Run the scorecard and shipcheck. If it passes, `pip install -e .` and you're live.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="install" id="install">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Install</span>
+        <h2>Get DuckTap in seconds</h2>
+      </div>
+      <div class="install-grid">
+        <div class="install-card">
+          <h3>From PyPI</h3>
+          <div class="code-block">
+            <code>pip install ducktap</code>
+            <button class="copy-btn" data-copy="pip install ducktap" aria-label="Copy">Copy</button>
+          </div>
+        </div>
+        <div class="install-card">
+          <h3>From source</h3>
+          <div class="code-block">
+            <code>git clone https://github.com/zanni098/DuckTap<br>cd DuckTap && pip install -e ".[dev]"</code>
+            <button class="copy-btn" data-copy="git clone https://github.com/zanni098/DuckTap && cd DuckTap && pip install -e &quot;.[dev]&quot;" aria-label="Copy">Copy</button>
+          </div>
+        </div>
+        <div class="install-card wide">
+          <h3>Print your first CLI</h3>
+          <div class="code-block">
+            <code>ducktap press https://petstore3.swagger.io/api/v3/openapi.yaml --out ./out</code>
+            <button class="copy-btn" data-copy="ducktap press https://petstore3.swagger.io/api/v3/openapi.yaml --out ./out" aria-label="Copy">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="comparison">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Comparison</span>
+        <h2>DuckTap vs Printing Press</h2>
+        <p>Same north star. Different priorities.</p>
+      </div>
+      <div class="comp-table-wrap">
+        <table class="comp-table">
+          <thead>
+            <tr>
+              <th>Capability</th>
+              <th>Printing Press</th>
+              <th class="highlight-col">DuckTap</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Language</td><td>Go</td><td class="highlight-col">Python</td></tr>
+            <tr><td>LLM support</td><td>Claude only</td><td class="highlight-col">Claude / GPT / Gemini / Ollama / Groq / Azure</td></tr>
+            <tr><td>Agent skills</td><td>Claude Code</td><td class="highlight-col">Claude + Cursor + generic tools.json</td></tr>
+            <tr><td>Web dashboard</td><td>-</td><td class="highlight-col">FastAPI UI included</td></tr>
+            <tr><td>Plugin system</td><td>Source fork</td><td class="highlight-col">Entry-point PyPI plugins</td></tr>
+            <tr><td>Browser sniff</td><td>Custom Go browser</td><td class="highlight-col">Playwright + scriptable actions</td></tr>
+            <tr><td>Generated CLI</td><td>Single Go binary</td><td class="highlight-col">Python (pip-installable, hackable)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="comp-note">Both are MIT-licensed. Both print a CLI, an MCP server, and a skill. DuckTap optimizes for hackability and multi-agent reach; Printing Press optimizes for single-binary deployment and the largest pre-built catalog.</p>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="container">
+      <h2>Ready to tape your API?</h2>
+      <p>Join the community. Add your API to the catalog, write a plugin, or just print your first CLI.</p>
+      <div class="cta-buttons">
+        <a href="https://github.com/zanni098/DuckTap" class="btn btn-primary btn-lg" target="_blank" rel="noopener">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.135-.3-.54-1.53.105-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.28-1.56 3.3-1.23 3.3-1.23.645 1.65.24 2.88.105 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+          Star on GitHub
+        </a>
+        <a href="https://github.com/zanni098/ducktap-library" class="btn btn-outline btn-lg" target="_blank" rel="noopener">Browse the Library</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <a href="#" class="logo">
+            <svg width="24" height="24" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect width="28" height="28" rx="7" fill="url(#logoGrad2)"/>
+              <path d="M8 20V14.5C8 13.5 8.5 13 9.5 13H11.5C12.5 13 13 13.5 13 14.5V20" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <path d="M13 14.5V11C13 10 13.5 9.5 14.5 9.5H16.5C17.5 9.5 18 10 18 11V20" stroke="white" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="18.5" cy="8.5" r="1.5" fill="white"/>
+              <defs>
+                <linearGradient id="logoGrad2" x1="0" y1="0" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#0EA5E9"/>
+                  <stop offset="1" stop-color="#6366F1"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <span>DuckTap</span>
+          </a>
+          <p>MIT Licensed. Built with Python, Click, and a lot of caffeine.</p>
+        </div>
+        <div class="footer-links">
+          <a href="https://github.com/zanni098/DuckTap" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://pypi.org/project/ducktap/" target="_blank" rel="noopener">PyPI</a>
+          <a href="https://github.com/zanni098/ducktap-library" target="_blank" rel="noopener">Library</a>
+          <a href="https://github.com/zanni098/DuckTap/blob/main/docs/ROADMAP.md" target="_blank" rel="noopener">Roadmap</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
