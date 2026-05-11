@@ -6,6 +6,8 @@
 > Claude/Cursor/Codex skill — wired up, cached, scored, ready to ship.
 
 [![CI](https://github.com/zanni098/DuckTap/actions/workflows/ci.yml/badge.svg)](https://github.com/zanni098/DuckTap/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/zanni098/DuckTap?display_name=tag&sort=semver)](https://github.com/zanni098/DuckTap/releases)
+[![PyPI](https://img.shields.io/pypi/v/ducktap.svg)](https://pypi.org/project/ducktap/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](pyproject.toml)
 
@@ -13,6 +15,24 @@ DuckTap is inspired by [Printing Press](https://printingpress.dev) by
 [@mvanhorn](https://github.com/mvanhorn) — same north star (*muscle memory for
 agents*) — rebuilt in Python with multi-LLM support, a web dashboard,
 Playwright-powered browser sniffing, and a real plugin system.
+
+![DuckTap local dashboard](docs/img/ducktap-ui.png)
+
+```text
+$ ducktap press tests/fixtures/petstore.yaml --out ./out --name petstore
+Pressed petstore (19 operations) -> out
+  python-cli: 10 files
+  mcp-server: 5 files
+  skill:      3 files
+
+Scorecard: 92/100 (A)
+  - coverage:      95  — 19 operations exposed
+  - documentation: 100 — 19/19 operations have docs
+  - auth:          100 — 2 auth scheme(s)
+  - typed_params:  54  — 29/53 params typed/enum
+  - artifacts:     100 — 3/3 expected artifact dirs present
+  - naming:        100 — 19/19 unique operation ids
+```
 
 ## Why a CLI factory?
 
