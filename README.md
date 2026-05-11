@@ -5,6 +5,8 @@
 > file, or a plain website, and it *prints* a Python CLI, an MCP server, and a
 > Claude/Cursor/Codex skill — wired up, cached, scored, ready to ship.
 
+**Website:** [ducktap-website.vercel.app](https://ducktap-website.vercel.app)
+
 [![CI](https://github.com/zanni098/DuckTap/actions/workflows/ci.yml/badge.svg)](https://github.com/zanni098/DuckTap/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/zanni098/DuckTap?display_name=tag&sort=semver)](https://github.com/zanni098/DuckTap/releases)
 [![PyPI](https://img.shields.io/pypi/v/ducktap.svg)](https://pypi.org/project/ducktap/)
