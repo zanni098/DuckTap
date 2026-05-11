@@ -39,7 +39,11 @@ def _catalog_dirs() -> list[Path]:
 def load_catalog() -> dict[str, CatalogEntry]:
     out: dict[str, CatalogEntry] = {}
     for d in _catalog_dirs():
-        for p in d.glob("*.yaml"):
+        # Recurse one level into category subdirs (library layout),
+        # plus top-level YAMLs (built-in layout).
+        for p in list(d.glob("*.yaml")) + list(d.glob("*/*.yaml")):
+            if any(part.startswith(".") for part in p.relative_to(d).parts):
+                continue
             try:
                 data = yaml.safe_load(p.read_text(encoding="utf-8"))
                 if not isinstance(data, dict):
