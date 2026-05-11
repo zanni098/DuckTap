@@ -10,6 +10,18 @@
       "dest": "/script.js"
     },
     {
+      "src": "/duck-logo\\.svg",
+      "dest": "/duck-logo.svg"
+    },
+    {
+      "src": "/favicon-.*\\.png",
+      "dest": "/favicon-:match.png"
+    },
+    {
+      "src": "/apple-touch-icon\\.png",
+      "dest": "/apple-touch-icon.png"
+    },
+    {
       "src": "/(.*)",
       "dest": "/index.html"
     }
