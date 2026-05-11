@@ -93,8 +93,14 @@ body {
   letter-spacing: -0.02em;
 }
 
-.logo svg {
+.logo-img {
   flex-shrink: 0;
+  display: block;
+}
+
+.logo span {
+  color: var(--text);
+  font-weight: 700;
 }
 
 .nav-links {
