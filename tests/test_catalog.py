@@ -1,4 +1,4 @@
-from ducktap.catalog import list_entries, get_entry
+from ducktap.catalog import get_entry, list_entries
 
 
 def test_catalog_loads():

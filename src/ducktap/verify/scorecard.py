@@ -5,7 +5,7 @@ dimensions, mirroring Printing Press's `scorecard` command.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from ducktap.core.spec import APISpec
@@ -34,10 +34,14 @@ class Scorecard:
 
 
 def _grade(n: int) -> str:
-    if n >= 90: return "A"
-    if n >= 80: return "B"
-    if n >= 70: return "C"
-    if n >= 60: return "D"
+    if n >= 90:
+        return "A"
+    if n >= 80:
+        return "B"
+    if n >= 70:
+        return "C"
+    if n >= 60:
+        return "D"
     return "F"
 
 

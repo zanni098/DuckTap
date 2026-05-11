@@ -4,14 +4,13 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
 from ducktap import __version__
-from ducktap.catalog import list_entries, get_entry
+from ducktap.catalog import get_entry, list_entries
 from ducktap.core import plugins
 from ducktap.core.pipeline import discover, press
 from ducktap.verify.scorecard import score
@@ -49,8 +48,8 @@ def _root(
 def press_cmd(
     source: str = typer.Argument(..., help="OpenAPI URL/file, HAR file, or website URL"),
     out: Path = typer.Option(Path("./out"), "--out", "-o", help="Output directory"),
-    name: Optional[str] = typer.Option(None, "--name", "-n", help="Override CLI name"),
-    hint: Optional[str] = typer.Option(None, "--from",
+    name: str | None = typer.Option(None, "--name", "-n", help="Override CLI name"),
+    hint: str | None = typer.Option(None, "--from",
                                        help="Force discoverer: openapi | har | browser-sniff"),
     targets: str = typer.Option(
         "python-cli,mcp-server,skill", "--targets", "-t",
@@ -77,9 +76,9 @@ app.command(name="press")(press_cmd)
 @app.command()
 def research(
     source: str = typer.Argument(...),
-    hint: Optional[str] = typer.Option(None, "--from"),
-    name: Optional[str] = typer.Option(None, "--name", "-n"),
-    out_json: Optional[Path] = typer.Option(None, "--out", "-o"),
+    hint: str | None = typer.Option(None, "--from"),
+    name: str | None = typer.Option(None, "--name", "-n"),
+    out_json: Path | None = typer.Option(None, "--out", "-o"),
 ) -> None:
     """Run discovery only; emit the normalized APISpec as JSON."""
     spec = discover(source, hint=hint, name=name)
@@ -115,7 +114,9 @@ def shipcheck_cmd(
     """Run structural & runtime sanity checks on a generated CLI."""
     results = shipcheck(str(out_dir), name)
     table = Table(title=f"shipcheck: {name}")
-    table.add_column("check"); table.add_column("pass"); table.add_column("detail")
+    table.add_column("check")
+    table.add_column("pass")
+    table.add_column("detail")
     failed = 0
     for r in results:
         table.add_row(r.name,
@@ -168,7 +169,9 @@ app.add_typer(plugins_app, name="plugins")
 def plugins_list() -> None:
     plugins.autoload_builtins()
     table = Table(title="DuckTap plugins")
-    table.add_column("kind"); table.add_column("name"); table.add_column("module")
+    table.add_column("kind")
+    table.add_column("name")
+    table.add_column("module")
     for n, d in plugins.get_discoverers().items():
         table.add_row("discoverer", n, type(d).__module__)
     for n, g in plugins.get_generators().items():
@@ -191,7 +194,7 @@ def ui(
 def sniff(
     url: str = typer.Argument(..., help="Website URL to sniff"),
     out: Path = typer.Option(Path("./out"), "--out", "-o"),
-    name: Optional[str] = typer.Option(None, "--name", "-n"),
+    name: str | None = typer.Option(None, "--name", "-n"),
     wait_ms: int = typer.Option(8000, "--wait-ms"),
     headless: bool = typer.Option(True, "--headless/--headed"),
 ) -> None:

@@ -94,10 +94,11 @@ def _load_entry_points() -> None:
 def autoload_builtins() -> None:
     """Import built-in plugins so they register themselves."""
     # Discoverers
-    from ducktap.discovery import openapi as _o  # noqa: F401
-    from ducktap.discovery import har as _h      # noqa: F401
     from ducktap.discovery import browser_sniff as _b  # noqa: F401
+    from ducktap.discovery import har as _h  # noqa: F401
+    from ducktap.discovery import openapi as _o  # noqa: F401
+    from ducktap.generator import mcp_server as _mcp  # noqa: F401
+
     # Generators
     from ducktap.generator import python_cli as _pc  # noqa: F401
-    from ducktap.generator import mcp_server as _mcp  # noqa: F401
-    from ducktap.generator import skill as _s         # noqa: F401
+    from ducktap.generator import skill as _s  # noqa: F401

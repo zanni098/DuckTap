@@ -10,7 +10,6 @@ Designed to be run locally: `ducktap ui`.
 """
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 from typing import Any
@@ -19,7 +18,7 @@ from fastapi import FastAPI, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
-from ducktap.catalog import list_entries, get_entry
+from ducktap.catalog import get_entry, list_entries
 from ducktap.core.pipeline import press
 from ducktap.verify.scorecard import score
 

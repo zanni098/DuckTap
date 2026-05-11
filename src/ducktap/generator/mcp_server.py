@@ -13,7 +13,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from ducktap.core import plugins
 from ducktap.core.naming import cli_command_name, flag_name
-from ducktap.core.spec import APISpec, Operation, Param
+from ducktap.core.spec import APISpec, Operation
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 

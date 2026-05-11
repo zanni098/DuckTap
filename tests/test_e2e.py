@@ -1,6 +1,5 @@
 """End-to-end: petstore spec -> generated CLI + MCP + skill -> shipcheck passes."""
 import ast
-import sys
 from pathlib import Path
 
 import pytest

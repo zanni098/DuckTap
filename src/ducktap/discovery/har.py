@@ -10,7 +10,7 @@ import re
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse, parse_qsl
+from urllib.parse import urlparse
 
 from ducktap.core import plugins
 from ducktap.core.naming import operation_id_from_path, slugify

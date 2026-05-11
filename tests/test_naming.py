@@ -1,6 +1,11 @@
 from ducktap.core.naming import (
-    cli_command_name, env_var_name, flag_name, kebab_case,
-    operation_id_from_path, slugify, snake_case,
+    cli_command_name,
+    env_var_name,
+    flag_name,
+    kebab_case,
+    operation_id_from_path,
+    slugify,
+    snake_case,
 )
 
 
