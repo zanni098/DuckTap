@@ -72,6 +72,19 @@ document.addEventListener('DOMContentLoaded', () => {
     observer.observe(sec);
   });
 
+  // Auto-update PyPI version badge from the live PyPI JSON API.
+  // Falls back silently to the hardcoded version on any network/parsing error.
+  const versionEl = document.querySelector('#pypi-version .badge-text');
+  if (versionEl) {
+    fetch('https://pypi.org/pypi/ducktap/json', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const v = data && data.info && data.info.version;
+        if (v) versionEl.textContent = `v${v} on PyPI`;
+      })
+      .catch(() => { });
+  }
+
   // Navbar background on scroll
   const navbar = document.querySelector('.navbar');
   window.addEventListener('scroll', () => {
