@@ -6,6 +6,7 @@ transient errors; mirrors responses into local SQLite for compound queries.
 from __future__ import annotations
 
 import os
+import sys
 import time
 from typing import Any
 
@@ -26,10 +27,11 @@ class APIError(RuntimeError):
 
 class Client:
     def __init__(self, base_url: str | None = None, timeout: float | None = None,
-                 mirror: Mirror | None = None):
+                 mirror: Mirror | None = None, debug: bool = False):
         self.base_url = (base_url or BASE_URL).rstrip("/")
         self.timeout = timeout or DEFAULT_TIMEOUT
         self.mirror = mirror
+        self.debug = debug or bool(os.environ.get("{{ spec.name|upper|replace('-', '_') }}_DEBUG"))
         self._client = httpx.Client(timeout=self.timeout, follow_redirects=True)
 
     def _auth_headers(self) -> dict[str, str]:
@@ -57,8 +59,15 @@ class Client:
                 headers: dict[str, str] | None = None,
                 json_body: Any | None = None,
                 use_cache: bool = False) -> Any:
+        if not self.base_url.startswith(("http://", "https://")):
+            raise APIError(0, (
+                "no base_url configured. Set "
+                "{{ spec.name|upper|replace('-', '_') }}_BASE_URL "
+                "or pass base_url= when constructing Client."
+            ))
         url = self.base_url + path
-        hdrs = self._auth_headers()
+        hdrs = {"Accept": "application/json", "User-Agent": "{{ spec.name }}-dt-cli"}
+        hdrs.update(self._auth_headers())
         if headers:
             hdrs.update({k: str(v) for k, v in headers.items() if v is not None})
         params = {k: v for k, v in (query or {}).items() if v is not None}
@@ -68,12 +77,19 @@ class Client:
             cache_key = self.mirror.key(method, url, params)
             cached = self.mirror.get(cache_key)
             if cached is not None:
+                if self.debug:
+                    print(f"[debug] cache hit {method} {url}", file=sys.stderr)
                 return cached
 
         last_err: Exception | None = None
         for attempt in range(3):
             try:
+                if self.debug:
+                    safe_hdrs = {k: ("***" if k.lower() in ("authorization", "api_key", "x-api-key") else v) for k, v in hdrs.items()}
+                    print(f"[debug] {method} {url} params={params} headers={safe_hdrs} body={json_body}", file=sys.stderr)
                 r = self._client.request(method, url, params=params, headers=hdrs, json=json_body)
+                if self.debug:
+                    print(f"[debug] -> {r.status_code} {len(r.content)}b", file=sys.stderr)
                 if r.status_code >= 500 and attempt < 2:
                     time.sleep(0.5 * (attempt + 1))
                     continue
