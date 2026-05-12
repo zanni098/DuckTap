@@ -19,6 +19,40 @@ def slugify(text: str) -> str:
     return _SLUG_RE.sub("-", norm.lower()).strip("-")
 
 
+# Words that are noise in API titles ("Swagger Petstore - OpenAPI 3.0" -> "petstore").
+_NAME_NOISE = frozenset({
+    "api", "apis", "rest", "restful", "openapi", "swagger", "service",
+    "services", "spec", "specs", "v1", "v2", "v3", "v4", "v5",
+    "1", "2", "3", "4", "5",
+    "0", "00", "30", "20", "10",
+    "the", "a", "an", "of", "for", "to", "and", "or",
+})
+
+
+def short_name(title: str, fallback: str = "api") -> str:
+    """Best-effort short, agent-friendly slug from a verbose API title.
+
+    The full title is slugified, split on hyphens, and obvious noise
+    ("OpenAPI", "v3", "REST", version numbers, ...) is dropped. Up to three
+    meaningful tokens are kept.
+
+    >>> short_name("Swagger Petstore - OpenAPI 3.0")
+    'petstore'
+    >>> short_name("GitHub v3 REST API")
+    'github'
+    >>> short_name("Stripe API")
+    'stripe'
+    """
+    full = slugify(title)
+    if not full:
+        return fallback
+    parts = [p for p in full.split("-") if p and p not in _NAME_NOISE]
+    if not parts:
+        # Every token was noise; keep the whole slug rather than returning ""
+        return full
+    return "-".join(parts[:3])
+
+
 _NON_IDENT_RE = re.compile(r"[^A-Za-z0-9_]+")
 
 

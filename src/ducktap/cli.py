@@ -94,6 +94,10 @@ def research(
 def scorecard(
     source: str = typer.Argument(..., help="APISpec JSON file or original source"),
     out_dir: Path = typer.Option(Path("./out"), "--out-dir"),
+    fail_under: int = typer.Option(
+        0, "--fail-under",
+        help="Exit non-zero if overall score is below this threshold (0 = never).",
+    ),
 ) -> None:
     """Score a spec / generated CLI."""
     if source.endswith(".json") and Path(source).exists():
@@ -103,6 +107,11 @@ def scorecard(
         spec = discover(source)
     sc = score(spec, str(out_dir))
     typer.echo(json.dumps(sc.to_dict(), indent=2))
+    if fail_under and sc.overall < fail_under:
+        Console(stderr=True).print(
+            f"[red]scorecard {sc.overall} < --fail-under {fail_under}[/]"
+        )
+        raise typer.Exit(2)
 
 
 @app.command(name="shipcheck")

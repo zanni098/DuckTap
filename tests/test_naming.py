@@ -4,6 +4,7 @@ from ducktap.core.naming import (
     flag_name,
     kebab_case,
     operation_id_from_path,
+    short_name,
     slugify,
     snake_case,
 )
@@ -48,6 +49,18 @@ def test_flag_name():
 
 def test_env_var_name():
     assert env_var_name("my-api") == "MY_API_API_KEY"
+
+
+def test_short_name_drops_noise_words():
+    assert short_name("Swagger Petstore - OpenAPI 3.0") == "petstore"
+    assert short_name("Stripe API") == "stripe"
+    assert short_name("GitHub v3 REST API") == "github"
+    # Multi-word distinctive titles keep their content (capped at 3 tokens).
+    assert short_name("My Multi Word Custom Service") == "my-multi-word"
+    # All-noise titles fall back to the full slug rather than empty.
+    assert short_name("OpenAPI v3") == "openapi-v3"
+    # Empty input returns the explicit fallback.
+    assert short_name("") == "api"
 
 
 def test_operation_id_from_path():

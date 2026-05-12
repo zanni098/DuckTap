@@ -8,14 +8,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 import jsonref
 import yaml
 
 from ducktap.core import plugins
-from ducktap.core.naming import operation_id_from_path, slugify, snake_case
+from ducktap.core.naming import operation_id_from_path, short_name, snake_case
 from ducktap.core.spec import APISpec, AuthScheme, Operation, Param, Response
 
 
@@ -47,8 +47,14 @@ class OpenAPIDiscoverer:
 
         is_v3 = "openapi" in doc
         info = doc.get("info") or {}
-        name_hint = opts.get("name") or info.get("title") or _name_from_source(source)
-        name = slugify(name_hint)
+        # If the user passes --name, take it as-is (already a slug). Otherwise
+        # produce a short, agent-friendly slug from the spec title.
+        if opts.get("name"):
+            name = opts["name"]
+        elif info.get("title"):
+            name = short_name(info["title"], fallback=_name_from_source(source))
+        else:
+            name = short_name(_name_from_source(source))
 
         servers = []
         if is_v3:
@@ -59,6 +65,12 @@ class OpenAPIDiscoverer:
             schemes = doc.get("schemes") or ["https"]
             if host:
                 servers = [f"{schemes[0]}://{host}{base_path}"]
+
+        # Resolve relative server URLs (common for petstore-style specs that
+        # ship "/api/v3") against the source URL, so the generated CLI has a
+        # working base_url out of the box.
+        if source.startswith(("http://", "https://")):
+            servers = [urljoin(source, s) if not _is_absolute(s) else s for s in servers]
 
         spec = APISpec(
             name=name,
@@ -107,6 +119,10 @@ def _load_raw(source: str) -> dict[str, Any]:
     if text_stripped.startswith("{"):
         return json.loads(text)
     return yaml.safe_load(text)
+
+
+def _is_absolute(url: str) -> bool:
+    return url.startswith(("http://", "https://"))
 
 
 def _name_from_source(source: str) -> str:

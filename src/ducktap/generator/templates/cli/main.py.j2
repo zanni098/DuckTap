@@ -12,26 +12,27 @@ from .commands import register
 
 {{ spec.description }}
 
-Auth: set the env var(s) below before running:
+Auth env vars (set before running):
 {% for s in spec.auth_schemes %}  - {{ s.env_var }}  ({{ s.type }}{% if s.description %} — {{ s.description }}{% endif %})
 {% endfor %}
 """,
 )
-@click.option("--json/--no-json", "as_json", default=True,
-              help="Emit raw JSON (default) vs pretty.")
 @click.option("--pretty", "pretty", is_flag=True, default=False,
-              help="Pretty-print with rich tables / colors.")
+              help="Human-friendly rich output. Default: raw JSON for piping.")
 @click.option("--cache/--no-cache", default=True,
               help="Use local SQLite mirror for GET requests.")
 @click.option("--cache-ttl", type=int, default=300, show_default=True,
               help="Mirror TTL in seconds.")
+@click.option("--debug", is_flag=True, default=False,
+              help="Print request/response details to stderr.")
 @click.version_option(version=__import__("{{ pkg_name }}").__version__)
 @click.pass_context
-def cli(ctx: click.Context, as_json: bool, pretty: bool, cache: bool, cache_ttl: int) -> None:
+def cli(ctx: click.Context, pretty: bool, cache: bool, cache_ttl: int, debug: bool) -> None:
     ctx.ensure_object(dict)
     ctx.obj["format"] = "pretty" if pretty else "json"
     ctx.obj["cache"] = cache
     ctx.obj["cache_ttl"] = cache_ttl
+    ctx.obj["debug"] = debug
 
 
 register(cli)

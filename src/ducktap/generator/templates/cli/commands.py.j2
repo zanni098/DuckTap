@@ -17,7 +17,6 @@ def _emit(ctx: click.Context, data: Any) -> None:
     if fmt == "json":
         click.echo(json.dumps(data, indent=2, default=str))
     else:
-        # pretty: rely on rich if installed, else json
         try:
             from rich.console import Console
             from rich.json import JSON
@@ -26,32 +25,53 @@ def _emit(ctx: click.Context, data: Any) -> None:
             click.echo(json.dumps(data, indent=2, default=str))
 
 
+def _coerce(v: Any) -> Any:
+    """If a CLI value looks like a JSON literal (object/array), decode it.
+    Lets users pass nested bodies as `--field '{"k":"v"}'` strings.
+    """
+    if isinstance(v, str) and v and v.strip()[:1] in ("{", "["):
+        try:
+            return json.loads(v)
+        except Exception:
+            return v
+    return v
+
+
 def _get_client(ctx: click.Context) -> Client:
     if "client" not in ctx.obj:
         from .mirror import Mirror
         mirror = Mirror(ttl_seconds=ctx.obj.get("cache_ttl", 300)) if ctx.obj.get("cache") else None
-        ctx.obj["client"] = Client(mirror=mirror)
+        ctx.obj["client"] = Client(mirror=mirror, debug=ctx.obj.get("debug", False))
     return ctx.obj["client"]
 
 
 def register(cli: click.Group) -> None:
     {% for op in operations %}
+    {# Detect flag collisions across path/query/header/body params; rename in-body collisions to `body_<name>`. #}
+    {% set ns = namespace(seen=[]) %}
+    {% set _ = ns.seen.append("__placeholder__") %}
     @cli.command(
         "{{ op.operation_id | cmd }}",
         help={{ (op.summary or op.description or op.operation_id) | tojson }},
     )
     {% for p in op.params %}
+    {% set _flag = p.name | flag %}
+    {% if _flag in ns.seen %}
+    {# Collision: prefix this body field's flag to keep Click happy. #}
+    {% set _flag = "--body-" + (p.name | flag | replace("--", "")) %}
+    {% endif %}
+    {% set _ = ns.seen.append(_flag) %}
     {% if p.location == "path" %}
     @click.option(
-        "{{ p.name | flag }}",
+        "{{ _flag }}",
         "{{ p.name | pyident }}",
         type={{ p | clicktype }},
         required=True,
-        help={{ (p.description or "Path parameter") | tojson }},
+        help={{ ("Path parameter: " + (p.description or p.name)) | tojson }},
     )
     {% elif p.location == "query" %}
     @click.option(
-        "{{ p.name | flag }}",
+        "{{ _flag }}",
         "{{ p.name | pyident }}",
         type={{ p | clicktype }},
 {% if p.default is not none %}
@@ -60,11 +80,11 @@ def register(cli: click.Group) -> None:
 {% else %}
         required={{ "True" if p.required else "False" }},
 {% endif %}
-        help={{ (p.description or "Query parameter") | tojson }},
+        help={{ (p.description or "Query parameter: " + p.name) | tojson }},
     )
     {% elif p.location == "header" %}
     @click.option(
-        "{{ p.name | flag }}",
+        "{{ _flag }}",
         "{{ p.name | pyident }}",
         type={{ p | clicktype }},
         required={{ "True" if p.required else "False" }},
@@ -72,7 +92,7 @@ def register(cli: click.Group) -> None:
     )
     {% elif p.location == "body" %}
     @click.option(
-        "{{ p.name | flag }}",
+        "{{ _flag }}",
         "{{ p.name | pyident }}",
         type=str,
         required={{ "True" if p.required else "False" }},
@@ -86,28 +106,23 @@ def register(cli: click.Group) -> None:
         {% for p in op.params if p.location == "path" %}
         path = path.replace("{{ '{' + p.name + '}' }}", str(kwargs.pop("{{ p.name | pyident }}")))
         {% endfor %}
-        query = {}
+        query: dict[str, Any] = {}
         {% for p in op.params if p.location == "query" %}
         if kwargs.get("{{ p.name | pyident }}") is not None:
             query["{{ p.name }}"] = kwargs.pop("{{ p.name | pyident }}")
         {% endfor %}
-        headers = {}
+        headers: dict[str, str] = {}
         {% for p in op.params if p.location == "header" %}
         if kwargs.get("{{ p.name | pyident }}") is not None:
             headers["{{ p.name }}"] = kwargs.pop("{{ p.name | pyident }}")
         {% endfor %}
-        body = None
+        body: Any = None
         {% set bps = op.params | selectattr("location", "equalto", "body") | list %}
         {% if bps %}
         body = {}
         {% for p in bps %}
         if kwargs.get("{{ p.name | pyident }}") is not None:
-            v = kwargs.pop("{{ p.name | pyident }}")
-            try:
-                v = json.loads(v) if isinstance(v, str) and v.strip().startswith(("{", "[")) else v
-            except Exception:
-                pass
-            body["{{ p.name }}"] = v
+            body["{{ p.name }}"] = _coerce(kwargs.pop("{{ p.name | pyident }}"))
         {% endfor %}
         if not body:
             body = None
