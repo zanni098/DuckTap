@@ -290,6 +290,13 @@ body {
   font-size: 0.8rem;
   font-weight: 500;
   color: var(--accent);
+  text-decoration: none;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+a.badge:hover {
+  background: rgba(232, 93, 4, 0.14);
+  border-color: rgba(232, 93, 4, 0.3);
 }
 
 .badge .dot {
