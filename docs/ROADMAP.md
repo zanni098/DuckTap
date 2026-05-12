@@ -28,8 +28,24 @@ over) Printing Press.
 - [ ] LLM-assisted **command renaming** for unwieldy operation IDs
 - [ ] Auth-doctor: detect login flows during sniffing, emit accurate auth env-var docs
 - [ ] Generated CLIs gain `--watch` and `--save` for ad-hoc local data lakes
-- [ ] Scorecard CI mode (fail builds below threshold)
+- [x] Scorecard CI mode (fail builds below threshold) — `ducktap scorecard --fail-under N` (0.1.2)
 - [ ] More catalog entries (Slack, Linear, Discord, Telegram, Twilio, Notion, …)
+
+### Quality work landed in 0.1.2 (out of band)
+
+- Smarter spec naming: drops `OpenAPI`/`v3`/`REST` noise so titles like
+  "Swagger Petstore - OpenAPI 3.0" become `petstore`, not the
+  unwieldy `swagger-petstore-openapi-3-0`.
+- Relative `servers:` URLs in OpenAPI specs are resolved against the
+  source URL when fetched over HTTP, fixing broken `BASE_URL` for
+  petstore-shaped specs.
+- Generated client: `Accept: application/json`, `User-Agent`, redacted
+  request logging via `--debug`/`<NAME>_DEBUG`, clear errors when
+  `base_url` is unset.
+- Generated CLI: `--debug`; `--json/--no-json` removed (redundant with
+  `--pretty`); flag-collision auto-rename for shared path/body names.
+- Runtime tests: generated CLIs are now exercised end-to-end against
+  `httpx.MockTransport`, not just parsed.
 
 ## v0.3.0 — Sniffing v2
 
