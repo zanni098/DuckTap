@@ -17,21 +17,35 @@ Auth env vars (set before running):
 {% endfor %}
 """,
 )
-@click.option("--pretty", "pretty", is_flag=True, default=False,
-              help="Human-friendly rich output. Default: raw JSON for piping.")
+@click.option("--json/--pretty", "json_output", default=True,
+              help="Emit JSON for agents or rich output for humans.")
 @click.option("--cache/--no-cache", default=True,
               help="Use local SQLite mirror for GET requests.")
 @click.option("--cache-ttl", type=int, default=300, show_default=True,
               help="Mirror TTL in seconds.")
+@click.option("--select", "select_fields", default="",
+              help="Comma-separated top-level fields to keep in JSON output.")
+@click.option("--compact", is_flag=True, default=False,
+              help="Keep only high-gravity fields such as id, name, status, and timestamps.")
+@click.option("--quiet", is_flag=True, default=False,
+              help="Suppress successful output; errors still go to stderr.")
+@click.option("--dry-run", is_flag=True, default=False,
+              help="Print the request that would be sent without calling the API.")
 @click.option("--debug", is_flag=True, default=False,
               help="Print request/response details to stderr.")
 @click.version_option(version=__import__("{{ pkg_name }}").__version__)
 @click.pass_context
-def cli(ctx: click.Context, pretty: bool, cache: bool, cache_ttl: int, debug: bool) -> None:
+def cli(ctx: click.Context, json_output: bool, cache: bool, cache_ttl: int,
+        select_fields: str, compact: bool, quiet: bool, dry_run: bool,
+        debug: bool) -> None:
     ctx.ensure_object(dict)
-    ctx.obj["format"] = "pretty" if pretty else "json"
+    ctx.obj["format"] = "json" if json_output else "pretty"
     ctx.obj["cache"] = cache
     ctx.obj["cache_ttl"] = cache_ttl
+    ctx.obj["select"] = [f.strip() for f in select_fields.split(",") if f.strip()]
+    ctx.obj["compact"] = compact
+    ctx.obj["quiet"] = quiet
+    ctx.obj["dry_run"] = dry_run
     ctx.obj["debug"] = debug
 
 

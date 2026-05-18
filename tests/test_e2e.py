@@ -95,3 +95,37 @@ def test_shipcheck_petstore(out_dir):
     assert by_name["python_syntax"].passed, by_name["python_syntax"].detail
     assert by_name["pyproject"].passed
     assert by_name["readme"].passed
+
+
+def test_generated_readme_is_agent_polished(out_dir):
+    press(str(FIXTURE), str(out_dir), name="petstore")
+    readme = (out_dir / "petstore-dt-cli" / "README.md").read_text(encoding="utf-8")
+    assert "- `PETSTORE_TOKEN`" in readme
+    assert "\n- `PETSTORE_API_KEY`" in readme
+    assert "oauth2- `PETSTORE_API_KEY`" not in readme
+    assert "\n- `petstore-dt-cli add-pet`" in readme
+    assert "agent mode" in readme.lower()
+    assert "doctor" in readme
+
+
+def test_generated_cli_exposes_doctor(out_dir):
+    import importlib
+    import json
+    import sys
+
+    press(str(FIXTURE), str(out_dir), name="petstore")
+    cli_root = str(out_dir / "petstore-dt-cli")
+    sys.path.insert(0, cli_root)
+    for k in list(sys.modules):
+        if k.startswith("petstore_dt_cli"):
+            del sys.modules[k]
+    try:
+        cli_main = importlib.import_module("petstore_dt_cli.main")
+        from click.testing import CliRunner
+        r = CliRunner().invoke(cli_main.cli, ["doctor"])
+        assert r.exit_code == 0, r.output
+        data = json.loads(r.output)
+        assert data["base_url"]["configured"]
+        assert "auth" in data
+    finally:
+        sys.path.remove(cli_root)

@@ -17,6 +17,7 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
+from ducktap import __version__ as ducktap_version
 from ducktap.core import plugins
 from ducktap.core.naming import cli_command_name, flag_name
 from ducktap.core.spec import APISpec, Operation, Param
@@ -101,6 +102,7 @@ class PythonCLIGenerator:
             "pkg_name": pkg_name,
             "cli_bin": cli_bin,
             "operations": spec.operations,
+            "ducktap_version": ducktap_version,
             "path_params": _path_params,
             "query_params": _query_params,
             "body_params": _body_params,
