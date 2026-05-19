@@ -50,42 +50,67 @@ the traffic when no spec exists, and prints:
 ## Install
 
 ```bash
-git clone https://github.com/zanni098/DuckTap
-cd ducktap
-pip install -e ".[dev]"
+pip install ducktap
 ducktap --version
 ```
 
-For browser sniffing:
+For browser sniffing (optional):
 
 ```bash
-pip install -e ".[dev,sniff]"
+pip install "ducktap[sniff]"
 playwright install chromium
 ```
+
+**Requires Python 3.11+.**
+
+<details>
+<summary>Developer install (contributing to DuckTap itself)</summary>
+
+```bash
+git clone https://github.com/zanni098/DuckTap
+cd DuckTap
+pip install -e ".[dev]"
+python -m pytest tests/ -q   # 44 passed
+```
+
+</details>
 
 ## Quick start
 
 ```bash
-# 1. From an OpenAPI spec (file or URL)
+# 1. Press a built-in catalog entry (no URL needed)
+ducktap catalog list                  # browse 17 built-in APIs
+ducktap catalog print stripe          # press Stripe CLI + MCP + skill
+
+# 2. From any OpenAPI spec URL
 ducktap press https://petstore3.swagger.io/api/v3/openapi.yaml
 
-# 2. From a HAR file (recorded browser traffic)
-ducktap press ./capture.har --name myapi
+# 3. From a local spec or HAR file
+ducktap press ./openapi.yaml --name myapi
+ducktap press ./traffic.har  --name myapi
 
-# 3. From a website with no public spec
+# 4. From a website with no public spec (needs [sniff] extra)
 ducktap sniff https://example.com
 
-# 4. From the curated catalog (built-in or community)
-ducktap catalog list
-ducktap catalog print stripe
-
-# 4b. Use the community library (https://github.com/zanni098/ducktap-library)
-git clone https://github.com/zanni098/ducktap-library ~/ducktap-library
-export DUCKTAP_CATALOG=~/ducktap-library
-ducktap catalog list      # now shows the full library too
-
-# 5. Browse + drive everything from the dashboard
+# 5. Open the dashboard
 ducktap ui    # http://127.0.0.1:8765
+```
+
+Running `ducktap press` prints something like:
+
+```
+Pressed petstore (19 operations) -> ./out
+  python-cli: 10 files
+  mcp-server:  5 files
+  skill:       3 files
+
+Scorecard: 92/100 (A)
+  - coverage:      95  — 19 operations exposed
+  - documentation: 100 — 19/19 operations have docs
+  - auth:          100 — 2 auth scheme(s)
+  - typed_params:   54 — 29/53 params typed/enum
+  - artifacts:     100 — 3/3 expected artifact dirs present
+  - naming:        100 — 19/19 unique operation ids
 ```
 
 What you get under `./out/`:
