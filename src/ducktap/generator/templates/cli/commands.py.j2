@@ -108,10 +108,17 @@ def _format_jsonl(data: Any) -> str:
     return "\n".join(json.dumps(it, default=str) for it in items)
 
 
-def _emit(ctx: click.Context, data: Any) -> None:
+def _emit(ctx: click.Context, data: Any, *, raw: bool = False) -> None:
+    """Emit `data` in the active output format.
+
+    `raw=True` skips `_shape()` so --compact/--select do not strip fields off
+    metadata payloads (dry-run, agent-context, doctor, profile management).
+    Those views are descriptions of the CLI itself, not API response data.
+    """
     if ctx.obj.get("quiet"):
         return
-    data = _shape(ctx, data)
+    if not raw:
+        data = _shape(ctx, data)
     fmt = ctx.obj.get("format", "json")
     if fmt == "json":
         click.echo(json.dumps(data, indent=2, default=str))
@@ -250,7 +257,115 @@ def register(cli: click.Group) -> None:
             },
             "operations": len(_OPERATIONS),
             "groups": sorted({op["group"] for op in _OPERATIONS}),
+        }, raw=True)
+
+    @cli.command("auth-doctor",
+                 help="Validate auth env vars and optionally probe the API to "
+                      "confirm credentials are accepted.")
+    @click.option("--probe/--no-probe", default=False,
+                  help="Make a real GET request to confirm credentials work.")
+    @click.pass_context
+    def auth_doctor(ctx: click.Context, probe: bool) -> None:
+        schemes: list[dict[str, Any]] = []
+        {% for s in spec.auth_schemes %}
+        v = os.environ.get("{{ s.env_var }}")
+        desc = {{ (s.description or "") | tojson }}
+        if v:
+            hint = "Credential set."
+        else:
+            hint = "Set {{ s.env_var }} before running."
+            if desc:
+                hint += " " + desc
+        schemes.append({
+            "name": "{{ s.name }}",
+            "type": "{{ s.type }}",
+            "location": "{{ s.location }}",
+            "parameter_name": "{{ s.parameter_name }}",
+            "env_var": "{{ s.env_var }}",
+            "set": bool(v),
+            "fingerprint": _fingerprint(v),
+            "hint": hint,
         })
+        {% endfor %}
+
+        set_count = sum(1 for s in schemes if s["set"])
+        summary = {
+            "set": set_count,
+            "unset": len(schemes) - set_count,
+            "total": len(schemes),
+            "all_set": set_count == len(schemes) and len(schemes) > 0,
+        }
+
+        probe_result: dict[str, Any] | None = None
+        if probe:
+            probe_op = next(
+                (op for op in _OPERATIONS
+                 if op["method"] == "GET" and "{" not in op["path"]),
+                None,
+            )
+            if probe_op is None:
+                probe_result = {
+                    "status": "skipped",
+                    "reason": "no GET operation without path params to probe",
+                }
+            else:
+                client = _get_client(ctx)
+                probe_url = client.base_url + probe_op["path"]
+                try:
+                    client.request("GET", probe_op["path"], use_cache=False)
+                    probe_result = {
+                        "status": "ok",
+                        "classification": "auth_works",
+                        "http_status": 200,
+                        "probed_op": probe_op["raw_id"],
+                        "url": probe_url,
+                    }
+                except APIError as exc:
+                    if exc.status in (401, 403):
+                        classification = (
+                            "auth_failed" if summary["all_set"] else "auth_missing"
+                        )
+                    elif exc.status == 429:
+                        classification = "rate_limited"
+                    elif exc.status == 0:
+                        classification = "no_base_url"
+                    else:
+                        classification = "inconclusive"
+                    probe_result = {
+                        "status": "ok",
+                        "classification": classification,
+                        "http_status": exc.status,
+                        "probed_op": probe_op["raw_id"],
+                        "url": probe_url,
+                    }
+                except Exception as exc:
+                    probe_result = {
+                        "status": "network_error",
+                        "classification": "network_error",
+                        "error": str(exc),
+                        "probed_op": probe_op["raw_id"],
+                        "url": probe_url,
+                    }
+
+        _emit(ctx, {
+            "cli": "{{ cli_bin }}",
+            "summary": summary,
+            "schemes": schemes,
+            "probe": probe_result,
+        }, raw=True)
+        # Exit code is the strongest signal an agent can act on without
+        # parsing JSON; map to the same palette `doctor`/operations use.
+        cls = (probe_result or {}).get("classification")
+        if cls in ("auth_failed", "auth_missing"):
+            ctx.exit(4)
+        if cls == "rate_limited":
+            ctx.exit(7)
+        if cls == "no_base_url":
+            ctx.exit(10)
+        if cls == "network_error":
+            ctx.exit(5)
+        if not summary["all_set"]:
+            ctx.exit(10)
 
     @cli.command("agent-context",
                  help="Emit structured JSON describing this CLI for agents.")
@@ -293,7 +408,7 @@ def register(cli: click.Group) -> None:
             },
             "groups": groups,
             "operations": _OPERATIONS,
-        })
+        }, raw=True)
 
     @cli.command("which",
                  help="Search commands by keyword (matches id, path, and summary).")
@@ -312,7 +427,7 @@ def register(cli: click.Group) -> None:
                     "path": op["path"],
                     "summary": op["summary"],
                 })
-        _emit(ctx, matches)
+        _emit(ctx, matches, raw=True)
         if not matches:
             ctx.exit(3)
 
@@ -333,7 +448,7 @@ def register(cli: click.Group) -> None:
                                   "values": json.loads(p.read_text(encoding="utf-8"))})
                 except Exception:
                     items.append({"name": p.stem, "values": None})
-        _emit(ctx, {"dir": str(d), "profiles": items})
+        _emit(ctx, {"dir": str(d), "profiles": items}, raw=True)
 
     @profile_group.command("save")
     @click.argument("name")
@@ -377,7 +492,7 @@ def register(cli: click.Group) -> None:
             body["cache_ttl"] = cache_ttl
         path = d / f"{name}.json"
         path.write_text(json.dumps(body, indent=2), encoding="utf-8")
-        _emit(ctx, {"saved": str(path), "values": body})
+        _emit(ctx, {"saved": str(path), "values": body}, raw=True)
 
     @profile_group.command("show")
     @click.argument("name")
@@ -387,7 +502,7 @@ def register(cli: click.Group) -> None:
         if not path.exists():
             click.echo(json.dumps({"error": f"no such profile: {name}"}), err=True)
             ctx.exit(3)
-        _emit(ctx, json.loads(path.read_text(encoding="utf-8")))
+        _emit(ctx, json.loads(path.read_text(encoding="utf-8")), raw=True)
 
     # ------------------------------------------------------------------
     # Tag-grouped operation tree. Operations are registered under their
@@ -490,7 +605,11 @@ def register(cli: click.Group) -> None:
         {% endif %}
         client = _get_client(ctx)
         if ctx.obj.get("dry_run"):
-            _emit(ctx, _dry_run_payload(client, "{{ op.method }}", path, query, headers, body))
+            # Dry-run payload describes the request, not response data, so
+            # skip --compact/--select. Otherwise --agent (which implies
+            # --compact) collapses the payload to a single high-gravity key.
+            _emit(ctx, _dry_run_payload(client, "{{ op.method }}", path, query, headers, body),
+                  raw=True)
             return
         try:
             data = client.request(

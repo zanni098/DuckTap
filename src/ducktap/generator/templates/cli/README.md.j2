@@ -28,6 +28,8 @@ Check local configuration without making API changes:
 
 ```bash
 {{ cli_bin }} doctor
+{{ cli_bin }} auth-doctor              # env-var validation + actionable hints
+{{ cli_bin }} auth-doctor --probe      # also make a live request to confirm
 ```
 
 ## Usage
