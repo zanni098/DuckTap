@@ -1,0 +1,10 @@
+name: asana
+display_name: Asana
+description: Work management and project tracking — tasks, projects, teams, attachments.
+category: project-management
+spec_url: https://raw.githubusercontent.com/Asana/openapi/master/defs/asana_oas.yaml
+spec_format: yaml
+tier: official
+homepage: https://developers.asana.com/reference
+notes: |
+  Personal access token (https://app.asana.com/0/my-apps). Set ASANA_TOKEN.

@@ -103,9 +103,15 @@ def test_generated_readme_is_agent_polished(out_dir):
     assert "- `PETSTORE_TOKEN`" in readme
     assert "\n- `PETSTORE_API_KEY`" in readme
     assert "oauth2- `PETSTORE_API_KEY`" not in readme
-    assert "\n- `petstore-dt-cli add-pet`" in readme
+    # Petstore operations carry tags, so add-pet renders under the `pet` group.
+    assert "\n- `petstore-dt-cli pet add-pet`" in readme
     assert "agent mode" in readme.lower()
     assert "doctor" in readme
+    # New v0.2 surface: discovery commands, profiles, format options.
+    assert "agent-context" in readme
+    assert "which" in readme
+    assert "profile save" in readme
+    assert "--format" in readme
 
 
 def test_generated_cli_exposes_doctor(out_dir):

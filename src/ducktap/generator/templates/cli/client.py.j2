@@ -27,12 +27,24 @@ class APIError(RuntimeError):
 
 class Client:
     def __init__(self, base_url: str | None = None, timeout: float | None = None,
-                 mirror: Mirror | None = None, debug: bool = False):
+                 mirror: Mirror | None = None, debug: bool = False,
+                 rate_limit: float = 0.0):
         self.base_url = (base_url or BASE_URL).rstrip("/")
         self.timeout = timeout or DEFAULT_TIMEOUT
         self.mirror = mirror
         self.debug = debug or bool(os.environ.get("{{ spec.name|upper|replace('-', '_') }}_DEBUG"))
+        self.rate_limit = float(rate_limit or 0.0)
+        self._last_request_at = 0.0
         self._client = httpx.Client(timeout=self.timeout, follow_redirects=True)
+
+    def _maybe_throttle(self) -> None:
+        if self.rate_limit <= 0:
+            return
+        min_interval = 1.0 / self.rate_limit
+        elapsed = time.monotonic() - self._last_request_at
+        if elapsed < min_interval:
+            time.sleep(min_interval - elapsed)
+        self._last_request_at = time.monotonic()
 
     def _auth_headers(self) -> dict[str, str]:
         h: dict[str, str] = {}
@@ -87,6 +99,7 @@ class Client:
                 if self.debug:
                     safe_hdrs = {k: ("***" if k.lower() in ("authorization", "api_key", "x-api-key") else v) for k, v in hdrs.items()}
                     print(f"[debug] {method} {url} params={params} headers={safe_hdrs} body={json_body}", file=sys.stderr)
+                self._maybe_throttle()
                 r = self._client.request(method, url, params=params, headers=hdrs, json=json_body)
                 if self.debug:
                     print(f"[debug] -> {r.status_code} {len(r.content)}b", file=sys.stderr)

@@ -1,0 +1,11 @@
+name: elevenlabs
+display_name: ElevenLabs
+description: AI audio — text-to-speech, voice cloning, dubbing, conversational agents.
+category: ai
+spec_url: https://api.elevenlabs.io/openapi.json
+spec_format: json
+tier: official
+homepage: https://elevenlabs.io/docs
+notes: |
+  Set ELEVENLABS_API_KEY from https://elevenlabs.io/app/settings/api-keys.
+  Sent as the `xi-api-key` header.

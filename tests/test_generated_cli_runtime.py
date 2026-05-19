@@ -278,6 +278,160 @@ def test_api_errors_use_typed_exit_codes(cli_module, monkeypatch):
     assert err["status"] == 429
 
 
+def test_agent_flag_enables_compact_json(cli_module, monkeypatch):
+    cli_main, cli_client = cli_module
+
+    def handler(req):
+        return httpx.Response(200, json=[{
+            "id": 1, "name": "rex", "status": "available", "internal": "noise",
+        }])
+
+    _install_mock(monkeypatch, cli_client, handler)
+
+    from click.testing import CliRunner
+    r = CliRunner().invoke(cli_main.cli, ["--no-cache", "--agent", "list-pets"])
+    assert r.exit_code == 0, r.output
+    # --agent implies --compact, which drops the "internal" field.
+    out = json.loads(r.output)
+    assert out == [{"id": 1, "name": "rex", "status": "available"}]
+
+
+def test_format_csv_emits_csv(cli_module, monkeypatch):
+    cli_main, cli_client = cli_module
+
+    def handler(req):
+        return httpx.Response(200, json=[
+            {"id": 1, "name": "rex"},
+            {"id": 2, "name": "spot"},
+        ])
+
+    _install_mock(monkeypatch, cli_client, handler)
+
+    from click.testing import CliRunner
+    r = CliRunner().invoke(cli_main.cli, ["--no-cache", "--format", "csv", "list-pets"])
+    assert r.exit_code == 0, r.output
+    lines = r.output.strip().splitlines()
+    assert lines[0] == "id,name"
+    assert "1,rex" in lines
+    assert "2,spot" in lines
+
+
+def test_format_jsonl_emits_one_object_per_line(cli_module, monkeypatch):
+    cli_main, cli_client = cli_module
+
+    def handler(req):
+        return httpx.Response(200, json=[
+            {"id": 1, "name": "rex"},
+            {"id": 2, "name": "spot"},
+        ])
+
+    _install_mock(monkeypatch, cli_client, handler)
+
+    from click.testing import CliRunner
+    r = CliRunner().invoke(cli_main.cli, ["--no-cache", "--format", "jsonl", "list-pets"])
+    assert r.exit_code == 0, r.output
+    lines = r.output.strip().splitlines()
+    assert len(lines) == 2
+    assert json.loads(lines[0])["id"] == 1
+    assert json.loads(lines[1])["id"] == 2
+
+
+def test_agent_context_returns_structured_metadata(cli_module):
+    cli_main, _ = cli_module
+    from click.testing import CliRunner
+    r = CliRunner().invoke(cli_main.cli, ["agent-context"])
+    assert r.exit_code == 0, r.output
+    data = json.loads(r.output)
+    assert data["cli"] == "mini-dt-cli"
+    assert isinstance(data["operations"], list)
+    assert len(data["operations"]) >= 3
+    assert "global_flags" in data
+    assert "exit_codes" in data
+    assert "groups" in data
+
+
+def test_which_searches_operations_by_keyword(cli_module):
+    cli_main, _ = cli_module
+    from click.testing import CliRunner
+    r = CliRunner().invoke(cli_main.cli, ["which", "pet"])
+    assert r.exit_code == 0, r.output
+    matches = json.loads(r.output)
+    assert len(matches) >= 1
+    assert all("command" in m for m in matches)
+
+
+def test_which_unknown_keyword_exits_3(cli_module):
+    cli_main, _ = cli_module
+    from click.testing import CliRunner
+    r = CliRunner().invoke(cli_main.cli, ["which", "zzzz-no-such-thing"])
+    assert r.exit_code == 3
+    assert json.loads(r.output) == []
+
+
+def test_profile_save_and_apply(cli_module, tmp_path, monkeypatch):
+    cli_main, cli_client = cli_module
+
+    # Redirect HOME so we don't touch the developer's real profiles.
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    from click.testing import CliRunner
+    runner = CliRunner()
+
+    # Save a profile with --compact and --format jsonl.
+    r = runner.invoke(
+        cli_main.cli,
+        ["profile", "save", "agent", "--format", "jsonl", "--compact"],
+    )
+    assert r.exit_code == 0, r.output
+
+    # Apply it: should emit JSONL + compact.
+    def handler(req):
+        return httpx.Response(200, json=[
+            {"id": 1, "name": "rex", "status": "available", "internal": "noise"},
+        ])
+
+    _install_mock(monkeypatch, cli_client, handler)
+    r = runner.invoke(
+        cli_main.cli,
+        ["--no-cache", "--profile", "agent", "list-pets"],
+    )
+    assert r.exit_code == 0, r.output
+    # JSONL: each item on its own line.
+    parsed = [json.loads(line) for line in r.output.strip().splitlines()]
+    assert parsed == [{"id": 1, "name": "rex", "status": "available"}]
+
+
+def test_dry_run_payload_includes_grouped_command_context(cli_module, monkeypatch):
+    """Smoke-check: dry-run still works after the tag-grouped tree refactor
+    for operations without tags (mini fixture has no tags -> stays flat)."""
+    cli_main, cli_client = cli_module
+
+    def handler(req):
+        raise AssertionError("must not be called")
+
+    _install_mock(monkeypatch, cli_client, handler)
+
+    from click.testing import CliRunner
+    r = CliRunner().invoke(
+        cli_main.cli, ["--no-cache", "--dry-run", "get-pet", "--pet-id", "1"],
+    )
+    assert r.exit_code == 0, r.output
+    out = json.loads(r.output)
+    assert out["method"] == "GET"
+    assert out["path"] == "/pets/1"
+
+
+def test_doctor_reports_tag_groups(cli_module):
+    cli_main, _ = cli_module
+    from click.testing import CliRunner
+    r = CliRunner().invoke(cli_main.cli, ["doctor"])
+    assert r.exit_code == 0, r.output
+    data = json.loads(r.output)
+    assert data["operations"] >= 3
+    # mini fixture has no tags, so operations live under "general".
+    assert "general" in data["groups"]
+
+
 def test_relative_server_url_resolves_against_http_source(tmp_path, monkeypatch):
     """If we discover from a URL whose spec has a relative `servers` URL,
     the generated client must end up with an absolute base_url."""

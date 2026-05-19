@@ -1,0 +1,11 @@
+name: sentry
+display_name: Sentry
+description: Error tracking and performance monitoring — projects, issues, events, releases.
+category: monitoring
+spec_url: https://raw.githubusercontent.com/getsentry/sentry-api-schema/main/openapi-derefed.json
+spec_format: json
+tier: community
+homepage: https://sentry.io
+notes: |
+  Bearer auth. Set SENTRY_AUTH_TOKEN to a personal auth token from
+  https://sentry.io/settings/account/api/auth-tokens/.

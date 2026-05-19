@@ -1,0 +1,11 @@
+name: launchdarkly
+display_name: LaunchDarkly
+description: Feature flag management — flags, environments, segments, experiments, audit logs.
+category: developer
+spec_url: https://app.launchdarkly.com/api/v2/openapi.json
+spec_format: json
+tier: community
+homepage: https://launchdarkly.com
+notes: |
+  API key auth. Create an access token at
+  https://app.launchdarkly.com/settings/authorization.

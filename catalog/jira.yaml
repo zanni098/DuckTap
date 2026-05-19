@@ -1,0 +1,12 @@
+name: jira
+display_name: Jira Cloud
+description: Issue tracking and project management for Jira Cloud.
+category: project-management
+spec_url: https://developer.atlassian.com/cloud/jira/platform/swagger-v3.v3.json
+spec_format: json
+tier: official
+homepage: https://developer.atlassian.com/cloud/jira/platform/rest/v3/
+notes: |
+  HTTP basic: email + API token (https://id.atlassian.com/manage-profile/security/api-tokens).
+  Site URL is per-tenant — set JIRA_BASE_URL=https://<your-site>.atlassian.net.
+  Spec is large (~420 paths).

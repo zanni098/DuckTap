@@ -1,0 +1,11 @@
+name: plaid
+display_name: Plaid
+description: Banking API — account linking, transactions, identity, income.
+category: payments
+spec_url: https://raw.githubusercontent.com/plaid/plaid-openapi/master/2020-09-14.yml
+spec_format: yaml
+tier: community
+homepage: https://plaid.com/docs/api
+notes: |
+  Sandbox keys recommended (PLAID_ENV=sandbox) until production review.
+  Keys: https://dashboard.plaid.com/team/keys

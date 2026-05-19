@@ -1,0 +1,11 @@
+name: telegram
+display_name: Telegram Bot
+description: Telegram Bot API — send messages, manage chats, webhooks, stickers.
+category: social-and-messaging
+spec_url: https://api.apis.guru/v2/specs/telegram.org/5.0.0/openapi.json
+spec_format: json
+tier: community
+homepage: https://core.telegram.org/bots/api
+notes: |
+  Flat command structure (~50 commands). Token-in-URL auth — Telegram bots
+  receive their token as part of the base URL.

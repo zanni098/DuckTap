@@ -1,0 +1,12 @@
+name: mercury
+display_name: Mercury
+description: Business banking — accounts, transactions, payments, recipients, cards.
+category: payments
+spec_url: https://dash.readme.com/api/v1/api-registry/ilz81omom1n4vx
+spec_format: json
+tier: official
+homepage: https://docs.mercury.com/reference
+notes: |
+  Production banking credentials — treat money-moving operations with care.
+  Use `--dry-run` to inspect payloads before sending. Token from
+  https://app.mercury.com/settings/tokens.

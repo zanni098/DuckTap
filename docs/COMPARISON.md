@@ -16,7 +16,7 @@ Where they diverge:
 
 ## Feature matrix
 
-| Capability | Printing Press 4.x | DuckTap 0.1 | Notes |
+| Capability | Printing Press 4.x | DuckTap 0.2.1 | Notes |
 |---|---|---|---|
 | OpenAPI 2/3 → CLI | ✓ | ✓ | Both via `kin-openapi`/`openapi-spec-validator`. |
 | HAR → CLI | ✓ | ✓ | DuckTap clusters by `(method, generalized_path, host)`. |
@@ -37,7 +37,14 @@ Where they diverge:
 | Vision (LLM screenshot OCR) | ✓ | ⌛ v0.3 | |
 | Plugin system | source fork | entry points | Drop-in PyPI plugins in DuckTap. |
 | Web UI / dashboard | ✗ | ✓ | `ducktap ui`. |
-| Catalog size | 30+ recipes | 3 starter + community | DuckTap catalog is open YAML; PR to add. |
+| Catalog size | 30+ recipes | **17 entries** (v0.2.1) | DuckTap catalog is open YAML; PR to add. |
+| Tag-grouped command tree (`<api> pet add`) | ✓ | ✓ (v0.2.1) | DuckTap groups by first OpenAPI tag. |
+| `--agent` one-flag mode | ✓ | ✓ (v0.2.1) | Toggles `--json`, `--compact`, `--no-color` atomically. |
+| `--format jsonl/csv/plain` | ✓ | ✓ (v0.2.1) | DuckTap also keeps `--json/--pretty`. |
+| `--rate-limit` and `--timeout` globals | ✓ | ✓ (v0.2.1) | Token-bucket + per-request timeout. |
+| Saved profiles (`profile save/list`) | ✓ | ✓ (v0.2.1) | DuckTap stores JSON under `~/.ducktap/<api>/profiles/`. |
+| `agent-context` introspection | ✓ | ✓ (v0.2.1) | Emits full command/group/flag manifest as JSON. |
+| `which <keyword>` operation search | ✓ | ✓ (v0.2.1) | Matches id, raw id, path, and summary. |
 | Compound query macros | ✓ | ⌛ v0.4 | |
 | Publish to PyPI/GitHub | ✗ | ⌛ v0.5 | |
 | Multi-language CLI output | Go only | Python now; TS/Go/Rust planned v0.6 | |

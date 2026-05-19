@@ -1,0 +1,11 @@
+name: digitalocean
+display_name: DigitalOcean
+description: Cloud infrastructure — droplets, kubernetes, load balancers, databases.
+category: developer
+spec_url: https://api-engineering.nyc3.cdn.digitaloceanspaces.com/spec-ci/DigitalOcean-public.v2.yaml
+spec_format: yaml
+tier: official
+homepage: https://docs.digitalocean.com/reference/api/
+notes: |
+  Bearer token. Create at https://cloud.digitalocean.com/account/api/tokens.
+  Set DIGITALOCEAN_TOKEN.
