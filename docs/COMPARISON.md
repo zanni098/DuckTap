@@ -16,7 +16,7 @@ Where they diverge:
 
 ## Feature matrix
 
-| Capability | Printing Press 4.x | DuckTap 0.2.1 | Notes |
+| Capability | Printing Press 4.x | DuckTap 0.2.2 | Notes |
 |---|---|---|---|
 | OpenAPI 2/3 → CLI | ✓ | ✓ | Both via `kin-openapi`/`openapi-spec-validator`. |
 | HAR → CLI | ✓ | ✓ | DuckTap clusters by `(method, generalized_path, host)`. |
@@ -33,7 +33,7 @@ Where they diverge:
 | Scorecard | ✓ | ✓ | DuckTap: 6 dimensions, deterministic, no LLM needed. |
 | Shipcheck | ✓ | ✓ | DuckTap parses generated Python with `ast`. |
 | Polish (LLM rewrite) | ✓ | ⌛ v0.2 | |
-| Auth-doctor | ✓ | ⌛ v0.2 | |
+| Auth-doctor | ✓ | ✓ (v0.2.2) | See dedicated row below for behavior details. |
 | Vision (LLM screenshot OCR) | ✓ | ⌛ v0.3 | |
 | Plugin system | source fork | entry points | Drop-in PyPI plugins in DuckTap. |
 | Web UI / dashboard | ✗ | ✓ | `ducktap ui`. |
@@ -45,6 +45,8 @@ Where they diverge:
 | Saved profiles (`profile save/list`) | ✓ | ✓ (v0.2.1) | DuckTap stores JSON under `~/.ducktap/<api>/profiles/`. |
 | `agent-context` introspection | ✓ | ✓ (v0.2.1) | Emits full command/group/flag manifest as JSON. |
 | `which <keyword>` operation search | ✓ | ✓ (v0.2.1) | Matches id, raw id, path, and summary. |
+| `auth-doctor` (env-var validation + live probe) | partial (`doctor`) | ✓ (v0.2.2) | DuckTap classifies live response (`auth_works`/`auth_failed`/`rate_limited`/...). |
+| `--agent --dry-run` preserves full request payload | ✓ | ✓ (v0.2.2) | Metadata views skip `--compact`; only response data gets compacted. |
 | Compound query macros | ✓ | ⌛ v0.4 | |
 | Publish to PyPI/GitHub | ✗ | ⌛ v0.5 | |
 | Multi-language CLI output | Go only | Python now; TS/Go/Rust planned v0.6 | |

@@ -432,6 +432,142 @@ def test_doctor_reports_tag_groups(cli_module):
     assert "general" in data["groups"]
 
 
+def test_agent_dry_run_keeps_full_request_payload(cli_module, monkeypatch):
+    """Regression: --agent (which implies --compact) must NOT strip fields
+    off the dry-run payload — those are request metadata, not response data."""
+    cli_main, cli_client = cli_module
+
+    def handler(req):
+        raise AssertionError("dry-run must not call the API")
+
+    _install_mock(monkeypatch, cli_client, handler)
+
+    from click.testing import CliRunner
+    r = CliRunner().invoke(
+        cli_main.cli,
+        ["--no-cache", "--agent", "--dry-run", "get-pet", "--pet-id", "1"],
+    )
+    assert r.exit_code == 0, r.output
+    out = json.loads(r.output)
+    assert set(out.keys()) == {"method", "path", "url", "query", "headers", "body"}
+    assert out["method"] == "GET"
+    assert out["path"] == "/pets/1"
+
+
+# ---------------------------------------------------------------------------
+# auth-doctor: pressed from a separate spec that has security schemes so we
+# can exercise both the env-var validation and the live-probe code paths.
+# ---------------------------------------------------------------------------
+
+AUTH_FIXTURE_TEXT = """
+openapi: 3.0.0
+info:
+  title: Auth Mini
+  version: 1.0.0
+servers:
+  - url: https://auth.example.test/api
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Get one at https://auth.example.test/settings/keys
+security:
+  - apiKey: []
+paths:
+  /ping:
+    get:
+      operationId: ping
+      summary: Probe endpoint
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema: {type: object}
+"""
+
+
+@pytest.fixture
+def auth_cli_module(tmp_path):
+    spec_path = tmp_path / "auth_mini.yaml"
+    spec_path.write_text(AUTH_FIXTURE_TEXT)
+    out = tmp_path / "out"
+    press(str(spec_path), str(out), name="authmini")
+
+    cli_root = str(out / "authmini-dt-cli")
+    sys.path.insert(0, cli_root)
+    for k in list(sys.modules):
+        if k.startswith("authmini_dt_cli"):
+            del sys.modules[k]
+    try:
+        cli_main = importlib.import_module("authmini_dt_cli.main")
+        cli_client = importlib.import_module("authmini_dt_cli.client")
+        yield cli_main, cli_client
+    finally:
+        sys.path.remove(cli_root)
+
+
+def test_auth_doctor_reports_unset_env_var_exits_10(auth_cli_module, monkeypatch):
+    cli_main, _ = auth_cli_module
+    monkeypatch.delenv("AUTHMINI_API_KEY", raising=False)
+
+    from click.testing import CliRunner
+    r = CliRunner().invoke(cli_main.cli, ["auth-doctor"])
+    assert r.exit_code == 10, r.output
+    data = json.loads(r.output)
+    assert data["summary"]["all_set"] is False
+    assert data["summary"]["unset"] == 1
+    scheme = data["schemes"][0]
+    assert scheme["env_var"] == "AUTHMINI_API_KEY"
+    assert scheme["set"] is False
+    # Hint should point at the description we set on the security scheme.
+    assert "settings/keys" in scheme["hint"]
+    assert data["probe"] is None
+
+
+def test_auth_doctor_probe_classifies_auth_failure(auth_cli_module, monkeypatch):
+    cli_main, cli_client = auth_cli_module
+    monkeypatch.setenv("AUTHMINI_API_KEY", "wrong-key")
+
+    sent_header = {}
+
+    def handler(req):
+        sent_header["x_api_key"] = req.headers.get("X-API-Key")
+        return httpx.Response(401, json={"error": "bad key"})
+
+    _install_mock(monkeypatch, cli_client, handler)
+
+    from click.testing import CliRunner
+    r = CliRunner().invoke(cli_main.cli, ["--no-cache", "auth-doctor", "--probe"])
+    assert r.exit_code == 4, r.output
+    data = json.loads(r.output)
+    assert data["summary"]["all_set"] is True
+    assert data["probe"]["classification"] == "auth_failed"
+    assert data["probe"]["http_status"] == 401
+    # Client must have forwarded the env-var as the configured header.
+    assert sent_header["x_api_key"] == "wrong-key"
+
+
+def test_auth_doctor_probe_succeeds_with_valid_key(auth_cli_module, monkeypatch):
+    cli_main, cli_client = auth_cli_module
+    monkeypatch.setenv("AUTHMINI_API_KEY", "right-key")
+
+    def handler(req):
+        assert req.headers.get("X-API-Key") == "right-key"
+        return httpx.Response(200, json={"ok": True})
+
+    _install_mock(monkeypatch, cli_client, handler)
+
+    from click.testing import CliRunner
+    r = CliRunner().invoke(cli_main.cli, ["--no-cache", "auth-doctor", "--probe"])
+    assert r.exit_code == 0, r.output
+    data = json.loads(r.output)
+    assert data["probe"]["classification"] == "auth_works"
+    assert data["probe"]["http_status"] == 200
+
+
 def test_relative_server_url_resolves_against_http_source(tmp_path, monkeypatch):
     """If we discover from a URL whose spec has a relative `servers` URL,
     the generated client must end up with an absolute base_url."""

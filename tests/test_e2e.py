@@ -112,6 +112,8 @@ def test_generated_readme_is_agent_polished(out_dir):
     assert "which" in readme
     assert "profile save" in readme
     assert "--format" in readme
+    # v0.2.2: auth-doctor surfaces in the README too.
+    assert "auth-doctor" in readme
 
 
 def test_generated_cli_exposes_doctor(out_dir):

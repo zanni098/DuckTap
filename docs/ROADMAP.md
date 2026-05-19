@@ -83,11 +83,28 @@ over) Printing Press.
 - [x] **Doctor enriched** — also reports cache db existence/size, active
   profile, available profile names, and the operation count + group list.
 
+### Landed in 0.2.2
+
+- [x] **`auth-doctor` command** on every generated CLI — env-var validation
+  with actionable hints sourced from the OpenAPI `description`, plus
+  optional `--probe` that makes a real GET request against the first
+  parameter-free endpoint and classifies the response (`auth_works`,
+  `auth_failed`, `auth_missing`, `rate_limited`, `inconclusive`,
+  `network_error`). Exit codes match the global palette (4 auth, 7 rate
+  limit, 5 API error, 10 local config) so agents can branch on them
+  without parsing JSON.
+- [x] **`--agent --dry-run` is no longer compacted** — dry-run payloads
+  describe the *request* (method/path/url/query/headers/body), not the
+  response, so applying `--compact` to them collapsed the payload to a
+  single high-gravity key. `_emit(..., raw=True)` is now used for every
+  metadata view (dry-run, agent-context, doctor, profile management) so
+  the CLI's self-description stays complete regardless of `--agent`.
+
 ### Still to do in 0.2.x
 
 - [ ] LLM-assisted **operation description rewrite** (`ducktap polish <name>`)
 - [ ] LLM-assisted **command renaming** for unwieldy operation IDs
-- [ ] Auth-doctor: detect login flows during sniffing, emit accurate auth env-var docs
+- [ ] Detect login flows during sniffing, emit accurate auth env-var docs
 - [ ] Generated CLIs gain `--watch` and `--save` for ad-hoc local data lakes
 
 
