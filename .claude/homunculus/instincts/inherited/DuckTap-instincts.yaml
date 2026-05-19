@@ -1,0 +1,299 @@
+# Instincts generated from https://github.com/zanni098/DuckTap
+# Generated: 2026-05-12T10:47:50.057Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: DuckTap-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/zanni098/DuckTap
+---
+
+# DuckTap Commit Length
+
+## Action
+
+Write moderate-length commit messages (~53 characters)
+
+## Evidence
+
+- Average commit message length: 53 chars
+- Based on 2 commits
+
+---
+id: DuckTap-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/zanni098/DuckTap
+---
+
+# DuckTap Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: DuckTap-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/zanni098/DuckTap
+---
+
+# DuckTap Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: DuckTap-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/zanni098/DuckTap
+---
+
+# DuckTap Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: DuckTap-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/zanni098/DuckTap
+---
+
+# DuckTap Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: ducktap-instinct-file-naming-camelcase
+trigger: "When creating a new file in the codebase"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: zanni098/DuckTap
+---
+
+# Ducktap Instinct File Naming Camelcase
+
+## Action
+
+Name the file using camelCase convention
+
+## Evidence
+
+- Pattern in files: namingConventions.files = camelCase
+
+---
+id: ducktap-instinct-function-naming-camelcase
+trigger: "When defining a new function"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: zanni098/DuckTap
+---
+
+# Ducktap Instinct Function Naming Camelcase
+
+## Action
+
+Name the function using camelCase convention
+
+## Evidence
+
+- Pattern in files: namingConventions.functions = camelCase
+
+---
+id: ducktap-instinct-class-naming-pascalcase
+trigger: "When defining a new class"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: zanni098/DuckTap
+---
+
+# Ducktap Instinct Class Naming Pascalcase
+
+## Action
+
+Name the class using PascalCase convention
+
+## Evidence
+
+- Pattern in files: namingConventions.classes = PascalCase
+
+---
+id: ducktap-instinct-constant-naming-screaming-snake
+trigger: "When defining a constant"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: zanni098/DuckTap
+---
+
+# Ducktap Instinct Constant Naming Screaming Snake
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE convention
+
+## Evidence
+
+- Pattern in files: namingConventions.constants = SCREAMING_SNAKE_CASE
+
+---
+id: ducktap-instinct-import-style-relative
+trigger: "When importing modules in Python files"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: zanni098/DuckTap
+---
+
+# Ducktap Instinct Import Style Relative
+
+## Action
+
+Use relative import statements
+
+## Evidence
+
+- Pattern in files: importStyle = relative
+
+---
+id: ducktap-instinct-export-style-named
+trigger: "When exporting functions or classes from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: zanni098/DuckTap
+---
+
+# Ducktap Instinct Export Style Named
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in files: exportStyle = named
+
+---
+id: ducktap-instinct-error-handling-try-catch
+trigger: "When handling potential errors in code"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: zanni098/DuckTap
+---
+
+# Ducktap Instinct Error Handling Try Catch
+
+## Action
+
+Use try-catch blocks for error handling
+
+## Evidence
+
+- Pattern in files: errorHandling.style = try-catch
+
+---
+id: ducktap-instinct-git-commit-prefix-chore-quality
+trigger: "When writing a commit message"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: zanni098/DuckTap
+---
+
+# Ducktap Instinct Git Commit Prefix Chore Quality
+
+## Action
+
+Prefix the message with 'chore:' or 'quality:' as appropriate
+
+## Evidence
+
+- Seen in commit: 'chore: normalize line endings to LF'
+- Seen in commit: 'quality: harden generator, fix relative server URLs, shorten spec names'
+
+---
+id: ducktap-instinct-git-commit-length
+trigger: "When composing a commit message"
+confidence: 0.7
+domain: git
+source: repo-analysis
+source_repo: zanni098/DuckTap
+---
+
+# Ducktap Instinct Git Commit Length
+
+## Action
+
+Keep the commit message concise, around 50 characters
+
+## Evidence
+
+- Pattern: averageLength = 53
+- Examples: commit messages are concise
+
+---
+id: ducktap-instinct-test-location-separate
+trigger: "When adding new tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: zanni098/DuckTap
+---
+
+# Ducktap Instinct Test Location Separate
+
+## Action
+
+Place test files in the separate 'tests' folder
+
+## Evidence
+
+- Pattern: testLocation = separate
+- CommonFolders includes 'tests'
+
