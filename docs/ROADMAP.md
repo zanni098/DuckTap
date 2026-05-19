@@ -58,13 +58,37 @@ over) Printing Press.
   `pyproject.toml` in CI; `mix_stderr` Click compatibility fixed
 - [x] Scorecard CI mode (`ducktap scorecard --fail-under N`) — landed 0.1.2
 
+### Landed in 0.2.1 (this branch)
+
+- [x] **Tag-grouped command tree** in generated CLIs — operations with tags
+  are organized under their first tag (e.g. `petstore-dt-cli pet add-pet`),
+  matching Printing Press's `<api>-pp-cli <resource> <verb>` muscle memory.
+- [x] **`--agent` mega-flag** on every generated CLI — toggles `--json`,
+  `--compact`, and `--no-color` at once for one-flag agent invocation.
+- [x] **Multi-format output** — `--format {json|jsonl|csv|plain|pretty}`
+  on every generated CLI, alongside the original `--json/--pretty` toggle.
+- [x] **`agent-context` command** — generated CLIs emit structured JSON
+  describing every command, group, global flag, and exit code so an agent
+  can self-introspect without parsing `--help`.
+- [x] **`which <keyword>` command** — search the operation tree by
+  substring across operation ids, paths, and summaries.
+- [x] **Saved profiles** — `profile save / list / show` subcommands and a
+  global `--profile NAME` to load flag presets from
+  `~/.ducktap/<api>/profiles/<name>.json`.
+- [x] **`--rate-limit` and `--timeout`** as global flags, plumbed through
+  the generated HTTP client (token-bucket throttle + per-request timeout).
+- [x] **Catalog expansion** — 3 → 17 entries (Sentry, Asana, Telegram,
+  Twilio, Plaid, HubSpot, Jira, Discord, ElevenLabs, Mercury,
+  LaunchDarkly, DigitalOcean, openrouteservice, Notion).
+- [x] **Doctor enriched** — also reports cache db existence/size, active
+  profile, available profile names, and the operation count + group list.
+
 ### Still to do in 0.2.x
 
 - [ ] LLM-assisted **operation description rewrite** (`ducktap polish <name>`)
 - [ ] LLM-assisted **command renaming** for unwieldy operation IDs
 - [ ] Auth-doctor: detect login flows during sniffing, emit accurate auth env-var docs
 - [ ] Generated CLIs gain `--watch` and `--save` for ad-hoc local data lakes
-- [ ] More catalog entries (Slack, Linear, Discord, Telegram, Twilio, Notion, …)
 
 
 ## v0.3.0 — Sniffing v2
@@ -105,7 +129,13 @@ over) Printing Press.
 | `--compact` / `--select` flags | ✅ landed v0.2.0 |
 | Typed exit codes | ✅ landed v0.2.0 |
 | `doctor` command | ✅ landed v0.2.0 |
-| 30+ catalog entries | 3 starter entries (more in v0.2.x) |
+| 30+ catalog entries | 17 entries (v0.2.1) — more in v0.2.x |
+| Tag-grouped command tree | ✅ landed v0.2.1 |
+| `--agent` mega-flag | ✅ landed v0.2.1 |
+| `--format` jsonl/csv/plain | ✅ landed v0.2.1 |
+| Saved profiles | ✅ landed v0.2.1 |
+| `agent-context` introspection | ✅ landed v0.2.1 |
+| `which <keyword>` search | ✅ landed v0.2.1 |
 | Domain-specific SQLite tables + FTS5 | key-value cache only (planned v0.4) |
 | Compound query commands (`stale`, `health`, `bottleneck`) | planned v0.4 |
 | 2-tier scorecard (domain correctness) | 1-tier structural only (planned v0.4) |

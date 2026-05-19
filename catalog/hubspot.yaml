@@ -1,0 +1,11 @@
+name: hubspot
+display_name: HubSpot
+description: CRM contacts API.
+category: sales-and-crm
+spec_url: https://raw.githubusercontent.com/HubSpot/HubSpot-public-api-spec-collection/main/PublicApiSpecs/CRM/Contacts/Rollouts/424/v3/contacts.json
+spec_format: json
+tier: official
+homepage: https://developers.hubspot.com/docs/api
+notes: |
+  Private app token (https://app.hubspot.com/private-apps). Spec only covers
+  CRM Contacts — HubSpot ships many separate specs for other resources.

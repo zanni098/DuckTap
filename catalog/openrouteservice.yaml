@@ -1,0 +1,11 @@
+name: openrouteservice
+display_name: openrouteservice
+description: Open-source routing and geocoding — directions, isochrones, matrix, POIs.
+category: maps
+spec_url: https://api.openrouteservice.org/v2/openapi.json
+spec_format: json
+tier: community
+homepage: https://openrouteservice.org/dev/#/api-docs
+notes: |
+  API key auth. Sign up at https://openrouteservice.org/dev/.
+  Set OPENROUTESERVICE_API_KEY.

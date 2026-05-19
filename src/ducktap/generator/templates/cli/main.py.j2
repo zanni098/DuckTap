@@ -1,9 +1,27 @@
 """Entrypoint for {{ cli_bin }}."""
 from __future__ import annotations
 
+import json
+import os
+from pathlib import Path
+
 import click
 
 from .commands import register
+
+
+def _profiles_dir() -> Path:
+    return Path.home() / ".ducktap" / "{{ spec.name }}" / "profiles"
+
+
+def _load_profile(name: str) -> dict:
+    p = _profiles_dir() / f"{name}.json"
+    if not p.exists():
+        return {}
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
 
 
 @click.group(
@@ -17,8 +35,17 @@ Auth env vars (set before running):
 {% endfor %}
 """,
 )
+@click.option("--agent", is_flag=True, default=False,
+              help="Agent mode: turns on --json, --compact, --no-color and "
+                   "applies all agent-friendly defaults at once.")
+@click.option("--format", "output_format",
+              type=click.Choice(["json", "jsonl", "csv", "plain", "pretty"]),
+              default=None,
+              help="Output format. Default 'json' (or 'pretty' if --pretty).")
 @click.option("--json/--pretty", "json_output", default=True,
               help="Emit JSON for agents or rich output for humans.")
+@click.option("--no-color", is_flag=True, default=False,
+              help="Disable colored output (also set when --agent is used).")
 @click.option("--cache/--no-cache", default=True,
               help="Use local SQLite mirror for GET requests.")
 @click.option("--cache-ttl", type=int, default=300, show_default=True,
@@ -33,20 +60,55 @@ Auth env vars (set before running):
               help="Print the request that would be sent without calling the API.")
 @click.option("--debug", is_flag=True, default=False,
               help="Print request/response details to stderr.")
+@click.option("--rate-limit", "rate_limit", type=float, default=0.0,
+              help="Max requests per second across this invocation (0 disables).")
+@click.option("--timeout", "request_timeout", type=float, default=0.0,
+              help="Per-request timeout in seconds (0 keeps the client default).")
+@click.option("--profile", "profile_name", type=str, default=None,
+              help="Load saved flag defaults from "
+                   "~/.ducktap/{{ spec.name }}/profiles/<name>.json.")
 @click.version_option(version=__import__("{{ pkg_name }}").__version__)
 @click.pass_context
-def cli(ctx: click.Context, json_output: bool, cache: bool, cache_ttl: int,
+def cli(ctx: click.Context, agent: bool, output_format: str | None,
+        json_output: bool, no_color: bool, cache: bool, cache_ttl: int,
         select_fields: str, compact: bool, quiet: bool, dry_run: bool,
-        debug: bool) -> None:
+        debug: bool, rate_limit: float, request_timeout: float,
+        profile_name: str | None) -> None:
     ctx.ensure_object(dict)
-    ctx.obj["format"] = "json" if json_output else "pretty"
+
+    profile: dict = {}
+    if profile_name:
+        profile = _load_profile(profile_name)
+
+    if agent:
+        # Agent mode: turn on JSON, compact, no-color. Quiet stays opt-in.
+        json_output = True
+        compact = True
+        no_color = True
+        if not output_format:
+            output_format = "json"
+
+    # Resolve output format with profile fallback, then --pretty switch.
+    fmt = output_format or profile.get("format")
+    if not fmt:
+        fmt = "json" if json_output else "pretty"
+    ctx.obj["format"] = fmt
+    ctx.obj["no_color"] = no_color or profile.get("no_color", False)
+    if ctx.obj["no_color"]:
+        os.environ["NO_COLOR"] = "1"
+
     ctx.obj["cache"] = cache
-    ctx.obj["cache_ttl"] = cache_ttl
-    ctx.obj["select"] = [f.strip() for f in select_fields.split(",") if f.strip()]
-    ctx.obj["compact"] = compact
-    ctx.obj["quiet"] = quiet
+    ctx.obj["cache_ttl"] = cache_ttl or profile.get("cache_ttl", 300)
+    select_value = select_fields or profile.get("select", "")
+    ctx.obj["select"] = [f.strip() for f in select_value.split(",") if f.strip()]
+    ctx.obj["compact"] = compact or profile.get("compact", False)
+    ctx.obj["quiet"] = quiet or profile.get("quiet", False)
     ctx.obj["dry_run"] = dry_run
-    ctx.obj["debug"] = debug
+    ctx.obj["debug"] = debug or profile.get("debug", False)
+    ctx.obj["rate_limit"] = rate_limit or profile.get("rate_limit", 0.0)
+    ctx.obj["timeout"] = request_timeout or profile.get("timeout", 0.0)
+    ctx.obj["profile"] = profile_name
+    ctx.obj["profile_data"] = profile
 
 
 register(cli)

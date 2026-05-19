@@ -1,0 +1,11 @@
+name: notion
+display_name: Notion
+description: Knowledge & docs API — pages, databases, blocks, users, search.
+category: productivity
+spec_url: https://storage.googleapis.com/versori-assets/public-specs/20240214/Notion.yaml
+spec_format: yaml
+tier: community
+homepage: https://developers.notion.com
+notes: |
+  Internal integration secret from https://www.notion.so/my-integrations.
+  Set NOTION_TOKEN. Required header: `Notion-Version: 2022-06-28`.
