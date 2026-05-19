@@ -153,6 +153,9 @@ over) Printing Press.
 | Saved profiles | ✅ landed v0.2.1 |
 | `agent-context` introspection | ✅ landed v0.2.1 |
 | `which <keyword>` search | ✅ landed v0.2.1 |
+| `--rate-limit` and `--timeout` globals | ✅ landed v0.2.1 |
+| `auth-doctor` (env-var validation + live probe) | ✅ landed v0.2.2 |
+| `--agent --dry-run` preserves full metadata payload | ✅ landed v0.2.2 |
 | Domain-specific SQLite tables + FTS5 | key-value cache only (planned v0.4) |
 | Compound query commands (`stale`, `health`, `bottleneck`) | planned v0.4 |
 | 2-tier scorecard (domain correctness) | 1-tier structural only (planned v0.4) |
