@@ -1,0 +1,8 @@
+name: postman
+display_name: Postman API
+description: API development platform — collections, environments, monitors.
+category: developer
+spec_url: https://api.getpostman.com/openapi
+spec_format: openapi
+tier: official
+homepage: https://learning.postman.com/docs/developer/postman-api/intro-api

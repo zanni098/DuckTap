@@ -1,0 +1,8 @@
+name: adyen
+display_name: Adyen Payments API
+description: Global payment processing — checkout, payouts, disputes.
+category: finance
+spec_url: https://raw.githubusercontent.com/Adyen/adyen-openapi/main/json/CheckoutService-v71.json
+spec_format: json
+tier: official
+homepage: https://docs.adyen.com/api

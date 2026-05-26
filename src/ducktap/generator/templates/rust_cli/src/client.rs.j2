@@ -1,0 +1,48 @@
+use reqwest::Client;
+use serde_json::Value;
+use std::env;
+
+pub struct ApiClient {
+    client: Client,
+    base_url: String,
+    auth_token: Option<String>,
+}
+
+impl ApiClient {
+    pub fn new() -> Self {
+        let base_url = env::var("{{ spec.name | upper | replace('-', '_') }}_BASE_URL")
+            .unwrap_or_else(|_| "{{ spec.base_url }}".to_string());
+        let auth_token = env::var("{{ spec.name | upper | replace('-', '_') }}_TOKEN").ok();
+        Self {
+            client: Client::new(),
+            base_url,
+            auth_token,
+        }
+    }
+
+    pub async fn request(
+        &self,
+        method: &str,
+        path: &str,
+        query: &[(&str, &str)],
+        body: Option<Value>,
+    ) -> anyhow::Result<Value> {
+        let url = format!("{}{}", self.base_url, path);
+        let mut req = self.client.request(
+            reqwest::Method::from_bytes(method.as_bytes())?,
+            &url,
+        );
+        if let Some(token) = &self.auth_token {
+            req = req.header("Authorization", format!("Bearer {}", token));
+        }
+        req = req.query(query);
+        if let Some(b) = body {
+            req = req.json(&b);
+        }
+        let resp = req.send().await?;
+        if !resp.status().is_success() {
+            anyhow::bail!("HTTP {}", resp.status());
+        }
+        Ok(resp.json().await?)
+    }
+}

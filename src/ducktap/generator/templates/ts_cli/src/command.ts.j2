@@ -1,0 +1,64 @@
+import {Args, Flags} from '@oclif/core'
+import {BaseCommand} from '../base'
+
+export default class {{ op.operation_id | cmd | tsident }} extends BaseCommand {
+  static description = '{{ op.summary or op.description or op.method + " " + op.path }}'
+  static args = {
+    {% for p in op.params if p.location == 'path' %}
+    '{{ p.name }}': Args.string({ description: '{{ p.description }}', required: {{ p.required | lower }} }),
+    {% endfor %}
+  }
+  static flags = {
+    ...BaseCommand.baseFlags,
+    {% for p in op.params if p.location in ['query', 'body', 'header'] %}
+    '{{ p.name | flag }}': Flags.{{ 'string' if p.type == 'string' else 'integer' if p.type == 'integer' else 'string' }}({ description: '{{ p.description }}'{% if p.required %}, required: true{% endif %}{% if p.default %}, default: {{ p.default | json }}{% endif %} }),
+    {% endfor %}
+  }
+
+  async run(): Promise<void> {
+    const {args, flags} = await this.parse({{ op.operation_id | cmd | tsident }})
+    const baseUrl = flags['base-url'] || '{{ spec.base_url }}'
+    {% if op.params | selectattr('location', 'equalto', 'path') | list %}
+    let path = '{{ op.path }}'
+    {% for p in op.params if p.location == 'path' %}
+    path = path.replace('{{ '{' + p.name + '}' }}', String(args['{{ p.name }}']))
+    {% endfor %}
+    {% else %}
+    const path = '{{ op.path }}'
+    {% endif %}
+
+    const headers: Record<string, string> = {}
+    if (flags['auth-token']) headers['Authorization'] = `Bearer ${flags['auth-token']}`
+    {% for p in op.params if p.location == 'header' %}
+    if (flags['{{ p.name | flag }}']) headers['{{ p.name }}'] = String(flags['{{ p.name | flag }}'])
+    {% endfor %}
+
+    {% if op.params | selectattr('location', 'equalto', 'query') | list %}
+    const params: Record<string, any> = {}
+    {% for p in op.params if p.location == 'query' %}
+    if (flags['{{ p.name | flag }}'] !== undefined) params['{{ p.name }}'] = flags['{{ p.name | flag }}']
+    {% endfor %}
+    {% endif %}
+
+    {% if op.params | selectattr('location', 'equalto', 'body') | list %}
+    const body: Record<string, any> = {}
+    {% for p in op.params if p.location == 'body' %}
+    if (flags['{{ p.name | flag }}'] !== undefined) body['{{ p.name }}'] = flags['{{ p.name | flag }}']
+    {% endfor %}
+    {% endif %}
+
+    const result = await this.apiRequest({
+      method: '{{ op.method }}',
+      url: `${baseUrl}${path}`,
+      headers,
+      {% if op.params | selectattr('location', 'equalto', 'query') | list %}params,{% endif %}
+      {% if op.params | selectattr('location', 'equalto', 'body') | list %}data: body,{% endif %}
+    }, flags['dry-run'])
+
+    if (flags.json) {
+      this.log(JSON.stringify(result, null, 2))
+    } else {
+      this.log(JSON.stringify(result, null, 2))
+    }
+  }
+}

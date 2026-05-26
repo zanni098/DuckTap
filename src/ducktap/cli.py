@@ -316,6 +316,106 @@ def publish_cmd(
         raise typer.Exit(1)
 
 
+@app.command()
+def smoke(
+    source: str = typer.Argument(..., help="OpenAPI URL/file or existing .apispec.json"),
+    base_url: str = typer.Option("", "--base-url", help="Override API base URL"),
+    auth_token: str = typer.Option("", "--auth-token", help="Bearer token or API key"),
+    operation: str = typer.Option("", "--operation", "-o", help="Specific operation to test"),
+) -> None:
+    """Run a live API smoke test against the first parameter-free GET endpoint."""
+    import httpx
+    if source.endswith('.json') and Path(source).exists():
+        from ducktap.core.spec import APISpec
+        spec = APISpec.model_validate_json(Path(source).read_text(encoding='utf-8'))
+    else:
+        spec = discover(source)
+
+    target = base_url or spec.base_url
+    if not target:
+        console.print("[red]No base_url configured. Use --base-url.[/]")
+        raise typer.Exit(10)
+
+    test_ops = [op for op in spec.operations if op.method == 'GET' and '{' not in op.path]
+    if operation:
+        test_ops = [op for op in test_ops if op.operation_id == operation]
+
+    if not test_ops:
+        console.print("[yellow]No suitable GET endpoint without path params found.[/]")
+        raise typer.Exit(10)
+
+    client = httpx.Client(base_url=target, headers={}, timeout=15)
+    if auth_token:
+        client.headers['Authorization'] = f'Bearer {auth_token}'
+
+    results = []
+    for op in test_ops[:3]:
+        try:
+            r = client.get(op.path)
+            status = r.status_code
+            ok = status < 400
+            results.append({
+                'operation': op.operation_id,
+                'path': op.path,
+                'status': status,
+                'ok': ok,
+                'elapsed_ms': int(r.elapsed.total_seconds() * 1000),
+            })
+            colour = 'green' if ok else 'yellow'
+            console.print(f'  [{colour}]{op.operation_id}[/] {op.path} -> {status}')
+        except Exception as e:
+            results.append({
+                'operation': op.operation_id,
+                'path': op.path,
+                'status': 0,
+                'ok': False,
+                'error': str(e),
+            })
+            console.print(f'  [red]{op.operation_id}[/] {op.path} -> ERROR: {e}')
+
+    passed = sum(1 for r in results if r['ok'])
+    total = len(results)
+    console.print(f"[bold]{passed}/{total} smoke tests passed[/]")
+    if passed < total:
+        raise typer.Exit(5)
+
+
+@app.command()
+def emboss_cmd(
+    name: str = typer.Argument(..., help="CLI slug, e.g. petstore"),
+    out_dir: Path = typer.Option(Path("./out"), "--out-dir", "-o"),
+    brand_name: str = typer.Option("", "--brand-name", help="Override project name"),
+    description: str = typer.Option("", "--description", "-d", help="Override description"),
+    author: str = typer.Option("", "--author", "-a"),
+    license_: str = typer.Option("MIT", "--license"),
+    homepage: str = typer.Option("", "--homepage"),
+) -> None:
+    """Apply a brand stamp to a generated CLI."""
+    from ducktap.emboss import BrandStamp, emboss
+    stamp = BrandStamp(
+        name=brand_name,
+        description=description,
+        author=author,
+        license=license_,
+        homepage=homepage,
+    )
+    modified = emboss(str(out_dir), name, stamp)
+    for p in modified:
+        console.print(f"[green]Stamped[/] {p}")
+
+
+@app.command()
+def vision_cmd(
+    url: str = typer.Argument(..., help="Website URL to screenshot and read"),
+    model: str | None = typer.Option(None, "--model", help="LiteLLM model override"),
+) -> None:
+    """Capture a screenshot and use an LLM to describe the API docs."""
+    from ducktap.vision import screenshot_to_text
+    console.print(f"[bold]Capturing[/] {url} ...")
+    result = screenshot_to_text(url, model=model)
+    console.print(result)
+
+
 library_app = typer.Typer(help="Local registry of printed CLIs.")
 app.add_typer(library_app, name="library")
 

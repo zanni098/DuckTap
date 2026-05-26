@@ -1,0 +1,8 @@
+name: zendesk
+display_name: Zendesk API
+description: Customer service platform — tickets, users, organizations, search.
+category: support
+spec_url: https://developer.zendesk.com/api-reference/ticketing/introduction
+spec_format: openapi
+tier: official
+homepage: https://developer.zendesk.com/api-reference

@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.6.0 -- 2026-05-26
+
+Multi-language generators + deferred features shipped.
+
+### Added
+
+- **TypeScript CLI generator** (`src/ducktap/generator/typescript_cli.py`)
+  -- oclif-based TypeScript CLI with per-command files, axios HTTP client,
+  and standard npm packaging.
+- **Go CLI generator** (`src/ducktap/generator/go_cli.py`)
+  -- cobra-based Go CLI with internal HTTP client, single binary output.
+- **Rust CLI generator** (`src/ducktap/generator/rust_cli.py`)
+  -- clap-based Rust CLI with reqwest async client, Cargo packaging.
+- **30+ catalog entries** -- expanded from 17 to 30 APIs
+  (Spotify, Shopify, Mailchimp, Adyen, Slack, Linear, Supabase,
+  Reddit, Twitch, Trello, Box, Postman, Zendesk).
+- **Domain-specific SQLite tables** (`mirror.py.j2`)
+  -- `domain_entities` table for per-endpoint structured storage.
+- **Compound query commands** (`commands.py.j2`)
+  -- `stale`, `health`, and `bottleneck` commands on every generated CLI.
+- **2-tier scorecard** (`verify/scorecard.py`)
+  -- new `domain_correctness` dimension scoring RESTful patterns,
+  response schemas, and base URL validity.
+- **Live API smoke test** (`cli.py`)
+  -- `ducktap smoke <source>` probes GET endpoints and reports latency.
+- **Emboss brand-stamp** (`emboss.py`)
+  -- `ducktap emboss <name>` rewrites pyproject.toml and README
+  with custom branding.
+- **Vision screenshot reading** (`vision.py`)
+  -- `ducktap vision <url>` captures a screenshot and sends it to
+  a vision-capable LLM for API documentation extraction.
+
+### Changed
+
+- README updated: 30+ catalog entries, multi-language generators,
+  compound query commands.
+
 ## 0.5.0 -- 2026-05-26
 
 Publish to PyPI/GitHub + auto-generated CI + DuckTap Library.

@@ -1,0 +1,8 @@
+name: box
+display_name: Box API
+description: Cloud content management — files, folders, collaborations, workflows.
+category: productivity
+spec_url: https://developer.box.com/reference
+spec_format: openapi
+tier: official
+homepage: https://developer.box.com

@@ -1,0 +1,8 @@
+name: twitch
+display_name: Twitch API
+description: Live streaming platform — channels, streams, users, moderation.
+category: entertainment
+spec_url: https://dev.twitch.tv/docs/api/reference
+spec_format: openapi
+tier: official
+homepage: https://dev.twitch.tv/docs/api

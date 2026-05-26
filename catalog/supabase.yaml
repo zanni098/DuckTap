@@ -1,0 +1,8 @@
+name: supabase
+display_name: Supabase Management API
+description: Open-source Firebase alternative — auth, database, storage, realtime.
+category: developer
+spec_url: https://api.supabase.com/api/v1
+spec_format: openapi
+tier: official
+homepage: https://supabase.com/docs/reference/api

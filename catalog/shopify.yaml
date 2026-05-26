@@ -1,0 +1,8 @@
+name: shopify
+display_name: Shopify Admin API
+description: E-commerce platform API — products, orders, customers, inventory.
+category: commerce
+spec_url: https://shopify.dev/admin-graphql-api
+spec_format: graphql
+tier: official
+homepage: https://shopify.dev/docs/api/admin-rest

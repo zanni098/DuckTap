@@ -688,3 +688,54 @@ def register(cli: click.Group) -> None:
         _emit(ctx, data)
 
     {% endfor %}
+    # Compound query commands for the local data lake
+    @cli.command("stale", help="List cached responses older than --hours.")
+    @click.option("--hours", default=24, help="Age threshold in hours.")
+    @click.pass_context
+    def stale_cmd(ctx, hours):
+        import time
+        client = _get_client(ctx)
+        if not client.mirror:
+            click.echo(json.dumps({"error": "Mirror not enabled"}, indent=2), err=True)
+            ctx.exit(10)
+        cutoff = time.time() - (hours * 3600)
+        rows = client.mirror.query(
+            f"SELECT collection, method, path, url, saved_at FROM records WHERE saved_at < {cutoff} ORDER BY saved_at DESC"
+        )
+        _emit(ctx, {"stale_records": rows}, raw=True)
+
+    @cli.command("health", help="Show data-lake health: record count, oldest, newest.")
+    @click.pass_context
+    def health_cmd(ctx):
+        client = _get_client(ctx)
+        if not client.mirror:
+            click.echo(json.dumps({"error": "Mirror not enabled"}, indent=2), err=True)
+            ctx.exit(10)
+        counts = client.mirror.query(
+            "SELECT collection, COUNT(*) as count FROM records GROUP BY collection"
+        )
+        oldest = client.mirror.query(
+            "SELECT MIN(saved_at) as oldest FROM records"
+        )
+        newest = client.mirror.query(
+            "SELECT MAX(saved_at) as newest FROM records"
+        )
+        _emit(ctx, {
+            "collections": counts,
+            "oldest": oldest[0] if oldest else None,
+            "newest": newest[0] if newest else None,
+        }, raw=True)
+
+    @cli.command("bottleneck", help="Find the most frequently called endpoints.")
+    @click.option("--limit", default=10, help="Number of results.")
+    @click.pass_context
+    def bottleneck_cmd(ctx, limit):
+        client = _get_client(ctx)
+        if not client.mirror:
+            click.echo(json.dumps({"error": "Mirror not enabled"}, indent=2), err=True)
+            ctx.exit(10)
+        rows = client.mirror.query(
+            f"SELECT method, path, COUNT(*) as calls FROM records GROUP BY method, path ORDER BY calls DESC LIMIT {limit}"
+        )
+        _emit(ctx, {"bottlenecks": rows}, raw=True)
+

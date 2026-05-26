@@ -1,0 +1,48 @@
+package {{ op.tags[0] | cmd if op.tags else 'general' }}
+
+import (
+	"fmt"
+	"github.com/spf13/cobra"
+	"{{ mod_name }}/internal"
+)
+
+// {{ op.operation_id | cmd | goident }}Cmd represents the {{ op.operation_id | cmd }} command
+var {{ op.operation_id | cmd | goident }}Cmd = &cobra.Command{
+	Use:   "{{ op.operation_id | cmd }}{% for p in op.params if p.location == 'path' %} <{{ p.name }}>{% endfor %}",
+	Short: "{{ op.summary or op.description or op.method + ' ' + op.path }}",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		client := internal.NewClient()
+		{% for p in op.params if p.location == 'path' %}
+		{{ p.name | goident }} := args[{{ loop.index0 }}]
+		{% endfor %}
+		path := "{{ op.path }}"
+		{% for p in op.params if p.location == 'path' %}
+		path = internal.ReplacePathParam(path, "{{ '{' + p.name + '}' }}", {{ p.name | goident }})
+		{% endfor %}
+
+		{% if op.params | selectattr('location', 'equalto', 'query') | list %}
+		query := make(map[string]string)
+		{% for p in op.params if p.location == 'query' %}
+		if cmd.Flags().Changed("{{ p.name | flag }}") {
+			v, _ := cmd.Flags().GetString("{{ p.name | flag }}")
+			query["{{ p.name }}"] = v
+		}
+		{% endfor %}
+		{% else %}
+		query := map[string]string{}
+		{% endif %}
+
+		result, err := client.Request("{{ op.method }}", path, query, nil)
+		if err != nil {
+			return err
+		}
+		fmt.Println(internal.PrettyJSON(result))
+		return nil
+	},
+}
+
+func init() {
+	{% for p in op.params if p.location in ['query', 'body', 'header'] %}
+	{{ op.operation_id | cmd | goident }}Cmd.Flags().{{ 'String' if p.type == 'string' else 'Int' if p.type == 'integer' else 'String' }}("{{ p.name | flag }}", "{{ p.default or '' }}", "{{ p.description }}")
+	{% endfor %}
+}

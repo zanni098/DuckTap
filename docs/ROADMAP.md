@@ -129,9 +129,16 @@ over) Printing Press.
 
 ## v0.6.0 -- Multi-language generators
 
-- [ ] TypeScript CLI generator (oclif)
-- [ ] Go CLI generator (cobra) -- for users who want the Printing Press output shape
-- [ ] Rust CLI generator (clap) -- single-binary distribution
+- [x] TypeScript CLI generator (oclif)
+- [x] Go CLI generator (cobra) -- for users who want the Printing Press output shape
+- [x] Rust CLI generator (clap) -- single-binary distribution
+- [x] 30+ catalog entries (30 APIs)
+- [x] Domain-specific SQLite tables + FTS5 in generated mirror
+- [x] Compound query commands (`stale`, `health`, `bottleneck`) in generated CLIs
+- [x] 2-tier scorecard with domain correctness dimension
+- [x] Live API smoke test (`ducktap smoke`)
+- [x] `emboss` brand-stamp step (`ducktap emboss`)
+- [x] `vision` LLM screenshot reading (`ducktap vision`)
 
 ## Known gaps vs Printing Press
 

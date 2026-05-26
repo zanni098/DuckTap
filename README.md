@@ -42,7 +42,10 @@ In a world of AI agents, **a well-designed CLI is muscle memory**. No hunting
 through docs, no wrong turns, no wasted tokens. DuckTap reads the spec, sniffs
 the traffic when no spec exists, and prints:
 
-- **A Python CLI** (`<api>-dt-cli`) -- Click-based, auth from env vars, JSON by default, pretty mode for humans, local SQLite mirror for compound queries, retries on transient errors.
+- **A Python CLI** (`<api>-dt-cli`) -- Click-based, auth from env vars, JSON by default, pretty mode for humans, local SQLite mirror with FTS5 full-text search, compound query commands (`stale`, `health`, `bottleneck`), retries on transient errors.
+- **TypeScript CLI** (`<api>-dt-ts`) -- oclif-based for Node.js teams.
+- **Go CLI** (`<api>-dt-go`) -- cobra-based, single binary.
+- **Rust CLI** (`<api>-dt-rs`) -- clap-based, single binary distribution.
 - **An MCP server** (`<api>-dt-mcp`) -- every operation exposed as an MCP tool, stdio transport, drop into Claude Desktop or Cursor in 60 seconds.
 - **A skill** for Claude Code, Cursor (`.mdc`), and a generic `tools.json` -- so any agent harness can pick up where the others left off.
 - **A scorecard** grading coverage, docs, auth clarity, typed params, artifacts, and naming.
@@ -70,7 +73,7 @@ playwright install chromium
 git clone https://github.com/zanni098/DuckTap
 cd DuckTap
 pip install -e ".[dev]"
-python -m pytest tests/ -q   # 66 passed
+python -m pytest tests/ -q   # 85+ passed
 ```
 
 </details>
@@ -79,7 +82,7 @@ python -m pytest tests/ -q   # 66 passed
 
 ```bash
 # 1. Press a built-in catalog entry (no URL needed)
-ducktap catalog list                  # browse 17 built-in APIs
+ducktap catalog list                  # browse 30+ built-in APIs
 ducktap catalog print stripe          # press Stripe CLI + MCP + skill
 
 # 2. From any OpenAPI spec URL

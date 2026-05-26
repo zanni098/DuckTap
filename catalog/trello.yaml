@@ -1,0 +1,8 @@
+name: trello
+display_name: Trello REST API
+description: Kanban-style project management — boards, cards, lists, workspaces.
+category: productivity
+spec_url: https://developer.atlassian.com/cloud/trello/rest/api-group-actions
+spec_format: openapi
+tier: official
+homepage: https://developer.atlassian.com/cloud/trello

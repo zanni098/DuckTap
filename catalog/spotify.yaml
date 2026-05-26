@@ -1,0 +1,8 @@
+name: spotify
+display_name: Spotify Web API
+description: Music streaming API — playlists, tracks, artists, search, player control.
+category: entertainment
+spec_url: https://raw.githubusercontent.com/sonallux/spotify-web/master/fixed-spotify-open-api-spec.yml
+spec_format: yaml
+tier: official
+homepage: https://developer.spotify.com/documentation/web-api

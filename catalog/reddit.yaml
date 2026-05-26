@@ -1,0 +1,8 @@
+name: reddit
+display_name: Reddit API
+description: Social news aggregation — posts, comments, subreddits, search.
+category: social
+spec_url: https://www.reddit.com/dev/api
+spec_format: openapi
+tier: official
+homepage: https://www.reddit.com/dev/api

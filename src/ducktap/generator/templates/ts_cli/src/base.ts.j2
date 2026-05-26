@@ -1,0 +1,20 @@
+import { Command, Flags } from '@oclif/core'
+import axios, { AxiosRequestConfig } from 'axios'
+
+export abstract class BaseCommand extends Command {
+  static baseFlags = {
+    'base-url': Flags.string({ description: 'Override API base URL', env: '{{ spec.name | upper }}_BASE_URL' }),
+    'auth-token': Flags.string({ description: 'Bearer token or API key', env: '{{ spec.name | upper }}_TOKEN' }),
+    json: Flags.boolean({ description: 'Output JSON' }),
+    'dry-run': Flags.boolean({ description: 'Show request without calling API' }),
+  }
+
+  protected async apiRequest(config: AxiosRequestConfig, dryRun: boolean): Promise<any> {
+    if (dryRun) {
+      this.log(JSON.stringify({ dryRun: true, ...config }, null, 2))
+      return { dryRun: true }
+    }
+    const response = await axios.request(config)
+    return response.data
+  }
+}

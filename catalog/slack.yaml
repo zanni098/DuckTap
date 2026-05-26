@@ -1,0 +1,8 @@
+name: slack
+display_name: Slack Web API
+description: Team messaging platform — channels, messages, users, files.
+category: collaboration
+spec_url: https://raw.githubusercontent.com/slackapi/slack-api-specs/master/web-api/slack_web_openapi_v2.json
+spec_format: json
+tier: official
+homepage: https://api.slack.com/web

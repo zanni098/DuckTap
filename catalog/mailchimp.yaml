@@ -1,0 +1,8 @@
+name: mailchimp
+display_name: Mailchimp Marketing API
+description: Email marketing automation — audiences, campaigns, reports.
+category: marketing
+spec_url: https://raw.githubusercontent.com/mailchimp/mailchimp-client-lib-codegen/master/spec/marketing.json
+spec_format: json
+tier: official
+homepage: https://mailchimp.com/developer

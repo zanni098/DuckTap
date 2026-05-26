@@ -1,0 +1,8 @@
+name: linear
+display_name: Linear API
+description: Issue tracking and project management — issues, cycles, teams.
+category: productivity
+spec_url: https://raw.githubusercontent.com/linear/linear/master/packages/sdk/src/_generated_documents.ts
+spec_format: graphql
+tier: official
+homepage: https://linear.app/docs/api

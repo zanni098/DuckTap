@@ -1,0 +1,30 @@
+mod client;
+mod commands;
+
+use clap::{Parser, Subcommand};
+
+#[derive(Parser)]
+#[command(name = "{{ cli_bin }}")]
+#[command(about = "Agent-native CLI for {{ spec.display_name or spec.name }}")]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    {% for op in operations %}
+    #[command(name = "{{ op.operation_id | cmd }}")]
+    {{ op.operation_id | cmd | rustident }}(commands::{{ op.operation_id | cmd | rustident }}Args),
+    {% endfor %}
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let cli = Cli::parse();
+    match cli.command {
+        {% for op in operations %}
+        Commands::{{ op.operation_id | cmd | rustident }}(args) => commands::{{ op.operation_id | cmd | rustident }}(args).await,
+        {% endfor %}
+    }
+}
