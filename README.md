@@ -18,7 +18,7 @@ DuckTap is inspired by [Printing Press](https://printingpress.dev) by
 agents*) -- rebuilt in Python with multi-LLM support, a web dashboard,
 Playwright-powered browser sniffing, and a real plugin system.
 
-![DuckTap local dashboard](docs/img/ducktap-ui.png)
+![DuckTap local dashboard](docs/img/ducktap-ui.png?v=2)
 
 ```text
 $ ducktap press tests/fixtures/petstore.yaml --out ./out --name petstore
