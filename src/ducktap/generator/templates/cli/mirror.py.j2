@@ -29,6 +29,7 @@ class Mirror:
                 fetched_at REAL NOT NULL
             )
         """)
+        self._ensure_tables()
         self.conn.commit()
 
     @staticmethod
@@ -63,3 +64,56 @@ class Mirror:
         cur = self.conn.execute("DELETE FROM responses")
         self.conn.commit()
         return cur.rowcount
+
+    def save_record(self, collection: str, method: str, path: str, url: str, value: Any) -> int:
+        """Persist a response into the records table (not TTL-bound)."""
+        items = value if isinstance(value, list) else [value]
+        rows = [
+            (collection, method.upper(), path, url, json.dumps(item, default=str), time.time())
+            for item in items
+        ]
+        self.conn.executemany(
+            "INSERT INTO records(collection, method, path, url, body, saved_at) VALUES (?, ?, ?, ?, ?, ?)",
+            rows,
+        )
+        self.conn.commit()
+        return len(rows)
+
+    def query(self, sql: str) -> list[dict[str, Any]]:
+        """Run a read-only SQL query over saved records."""
+        if not sql.lstrip().lower().startswith("select"):
+            raise ValueError("Only SELECT queries are allowed")
+        cur = self.conn.execute(sql)
+        cols = [d[0] for d in cur.description or []]
+        return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
+
+    def search(self, text: str, limit: int = 20) -> list[dict[str, Any]]:
+        """Full-text search over saved JSON bodies."""
+        rows = self.conn.execute(
+            "SELECT collection, method, path, url, body, saved_at FROM records "
+            "WHERE body LIKE ? ORDER BY saved_at DESC LIMIT ?",
+            (f"%{text}%", limit),
+        ).fetchall()
+        return [
+            {
+                "collection": row[0], "method": row[1], "path": row[2],
+                "url": row[3], "body": json.loads(row[4]), "saved_at": row[5],
+            }
+            for row in rows
+        ]
+
+    def _ensure_tables(self) -> None:
+        """Create records table if it doesn't exist (for backwards compat)."""
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                collection TEXT NOT NULL,
+                method TEXT NOT NULL,
+                path TEXT NOT NULL,
+                url TEXT NOT NULL,
+                body TEXT NOT NULL,
+                saved_at REAL NOT NULL
+            )
+        """)
+        self.conn.commit()
+

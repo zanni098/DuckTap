@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.3.0 — 2026-05-26
+
+Sniffing v2 + first-class GraphQL + community research.
+
+### Added
+
+- **GraphQL first-class discoverer** (`src/ducktap/plugins/builtin/graphql_intro.py`)
+  — full introspection for Query, Mutation, and Subscription types,
+  persisted query support, and proper type unwrapping (NON_NULL, LIST).
+- **Crowd-sniff research** (`src/ducktap/crowd_sniff.py`)
+  — DuckDuckGo web search + LiteLLM to study existing community CLIs and
+  MCP servers for an API name, returning a structured report.
+  Registered as `ducktap research --crowd`.
+- **Smart action recording** (`src/ducktap/discovery/action_recorder.py`)
+  — record clicks, fills, scrolls, waits, and navigation during a
+  browser-sniff session. Save to JSON and replay later with
+  `--replay-actions`.
+- **mitmproxy-backed sniff** (`src/ducktap/discovery/mitm_sniff.py`)
+  — alternative to headless Chromium. Run a local mitmproxy, browse with
+  any client, then convert captured traffic into an APISpec.
+- **Rate-limit + retry inference** — HAR discoverer now scans for
+  `X-RateLimit-*`, `Retry-After`, and `429`/`503` responses. Inferred
+  backoff strategy is stored in `APISpec.extensions`.
+- **`APISpec.extensions`** field added for vendor extensions (used by
+  rate-limit metadata).
+
+### Fixed
+
+- **Python 3.14 `CliRunner` compatibility** — tests that inspect
+  `r.stderr` now pass `mix_stderr=False` to avoid Click's
+  `ValueError: stderr not separately captured`.
+
 ## 0.1.2 — 2026-05-12
 
 Quality pass. Generated CLIs are now actually usable end-to-end against

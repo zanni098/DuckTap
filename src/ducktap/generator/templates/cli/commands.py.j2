@@ -152,7 +152,10 @@ def _coerce(v: Any) -> Any:
 def _get_client(ctx: click.Context) -> Client:
     if "client" not in ctx.obj:
         from .mirror import Mirror
-        mirror = Mirror(ttl_seconds=ctx.obj.get("cache_ttl", 300)) if ctx.obj.get("cache") else None
+        mirror = (
+            Mirror(ttl_seconds=ctx.obj.get("cache_ttl", 300))
+            if ctx.obj.get("cache") or ctx.obj.get("save") else None
+        )
         timeout = ctx.obj.get("timeout") or None
         ctx.obj["client"] = Client(
             mirror=mirror,
@@ -180,6 +183,14 @@ def _fingerprint(value: str | None) -> str:
         return ""
     return value[:4] + "***" if len(value) > 4 else "***"
 
+
+def _maybe_save(ctx: click.Context, client: Client, method: str, path: str, data: Any) -> None:
+    """Persist response to the local data lake if --save is active."""
+    if ctx.obj.get("save") and hasattr(client, "mirror") and client.mirror:
+        client.mirror.save_record(
+            ctx.obj["save"], method, path,
+            client.base_url + path, data,
+        )
 
 def _dry_run_payload(client: Client, method: str, path: str,
                      query: dict[str, Any], headers: dict[str, str],
@@ -504,6 +515,41 @@ def register(cli: click.Group) -> None:
             ctx.exit(3)
         _emit(ctx, json.loads(path.read_text(encoding="utf-8")), raw=True)
 
+    data_group = click.Group(name="data",
+                             help="Query and search the local response lake.")
+    cli.add_command(data_group)
+
+    @data_group.command("query")
+    @click.argument("sql")
+    @click.pass_context
+    def data_query(ctx: click.Context, sql: str) -> None:
+        """Run read-only SQL over saved / cached responses."""
+        client = _get_client(ctx)
+        mirror = getattr(client, "mirror", None)
+        if not mirror:
+            click.echo(json.dumps({"error": "no mirror available -- use --save or --cache"}), err=True)
+            ctx.exit(10)
+        try:
+            rows = mirror.query(sql)
+        except ValueError as e:
+            click.echo(json.dumps({"error": str(e)}), err=True)
+            ctx.exit(10)
+        _emit(ctx, rows, raw=True)
+
+    @data_group.command("search")
+    @click.argument("text")
+    @click.option("--limit", type=int, default=20, show_default=True)
+    @click.pass_context
+    def data_search(ctx: click.Context, text: str, limit: int) -> None:
+        """Full-text search over saved JSON bodies."""
+        client = _get_client(ctx)
+        mirror = getattr(client, "mirror", None)
+        if not mirror:
+            click.echo(json.dumps({"error": "no mirror available -- use --save or --cache"}), err=True)
+            ctx.exit(10)
+        rows = mirror.search(text, limit=limit)
+        _emit(ctx, rows, raw=True)
+
     # ------------------------------------------------------------------
     # Tag-grouped operation tree. Operations are registered under their
     # first tag (kebab-cased). Operations without a usable tag remain at
@@ -621,6 +667,7 @@ def register(cli: click.Group) -> None:
             click.echo(json.dumps({"error": str(e), "status": e.status, "body": e.body},
                                   indent=2, default=str), err=True)
             ctx.exit(_exit_code(e.status))
+        _maybe_save(ctx, client, "{{ op.method }}", path, data)
         _emit(ctx, data)
 
     {% endfor %}

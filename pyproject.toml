@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ducktap"
-version = "0.2.2"
+version = "0.3.0"
 description = "DuckTap — a CLI factory for AI agents. Print agent-native CLIs + MCP servers + skills from any API or website."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -38,6 +38,9 @@ dependencies = [
 sniff = [
     "playwright>=1.45",          # browser sniffing
     "mitmproxy>=11.0",
+]
+search = [
+    "duckduckgo-search>=6.0",   # crowd-sniff web search
 ]
 dev = [
     "pytest>=8.0",

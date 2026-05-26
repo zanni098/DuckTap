@@ -112,6 +112,22 @@ def _install_mock(monkeypatch, cli_client, handler):
     monkeypatch.setattr(cli_client.Client, "__init__", patched_init)
 
 
+def _cli_runner():
+    """Return a CliRunner, using mix_stderr=False when available (Click 8+)."""
+    from click.testing import CliRunner
+    try:
+        return CliRunner(mix_stderr=False)
+    except TypeError:
+        return CliRunner()
+
+
+def _get_stderr(result):
+    """Return captured stderr text, compatible with Click 7 and 8."""
+    if result.stderr is not None:
+        return result.stderr
+    return result.output
+
+
 def test_get_with_query_param(cli_module, monkeypatch):
     cli_main, cli_client = cli_module
     seen = {}
@@ -180,12 +196,11 @@ def test_4xx_emits_error_to_stderr(cli_module, monkeypatch):
 
     _install_mock(monkeypatch, cli_client, handler)
 
-    from click.testing import CliRunner
-    r = CliRunner().invoke(
+    r = _cli_runner().invoke(
         cli_main.cli, ["--no-cache", "get-pet", "--pet-id", "999"]
     )
     assert r.exit_code == 3
-    err = json.loads(r.stderr)
+    err = json.loads(_get_stderr(r))
     assert err["status"] == 404
     assert err["body"] == {"detail": "no such pet"}
 
@@ -271,10 +286,9 @@ def test_api_errors_use_typed_exit_codes(cli_module, monkeypatch):
 
     _install_mock(monkeypatch, cli_client, handler)
 
-    from click.testing import CliRunner
-    r = CliRunner().invoke(cli_main.cli, ["--no-cache", "get-pet", "--pet-id", "1"])
+    r = _cli_runner().invoke(cli_main.cli, ["--no-cache", "get-pet", "--pet-id", "1"])
     assert r.exit_code == 7
-    err = json.loads(r.stderr)
+    err = json.loads(_get_stderr(r))
     assert err["status"] == 429
 
 
