@@ -3,7 +3,7 @@
 > **Tape any API to your agent in one command.**
 > DuckTap is a CLI factory for AI agents. Point it at an OpenAPI spec, a HAR
 > file, or a plain website, and it *prints* a Python CLI, an MCP server, and a
-> Claude/Cursor/Codex skill — wired up, cached, scored, ready to ship.
+> Claude/Cursor/Codex skill -- wired up, cached, scored, ready to ship.
 
 **Website:** [ducktap-website.vercel.app](https://ducktap-website.vercel.app)
 
@@ -14,8 +14,8 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](pyproject.toml)
 
 DuckTap is inspired by [Printing Press](https://printingpress.dev) by
-[@mvanhorn](https://github.com/mvanhorn) — same north star (*muscle memory for
-agents*) — rebuilt in Python with multi-LLM support, a web dashboard,
+[@mvanhorn](https://github.com/mvanhorn) -- same north star (*muscle memory for
+agents*) -- rebuilt in Python with multi-LLM support, a web dashboard,
 Playwright-powered browser sniffing, and a real plugin system.
 
 ![DuckTap local dashboard](docs/img/ducktap-ui.png)
@@ -28,12 +28,12 @@ Pressed petstore (19 operations) -> out
   skill:      3 files
 
 Scorecard: 92/100 (A)
-  - coverage:      95  — 19 operations exposed
-  - documentation: 100 — 19/19 operations have docs
-  - auth:          100 — 2 auth scheme(s)
-  - typed_params:  54  — 29/53 params typed/enum
-  - artifacts:     100 — 3/3 expected artifact dirs present
-  - naming:        100 — 19/19 unique operation ids
+  - coverage:      95  -- 19 operations exposed
+  - documentation: 100 -- 19/19 operations have docs
+  - auth:          100 -- 2 auth scheme(s)
+  - typed_params:  54  -- 29/53 params typed/enum
+  - artifacts:     100 -- 3/3 expected artifact dirs present
+  - naming:        100 -- 19/19 unique operation ids
 ```
 
 ## Why a CLI factory?
@@ -42,9 +42,9 @@ In a world of AI agents, **a well-designed CLI is muscle memory**. No hunting
 through docs, no wrong turns, no wasted tokens. DuckTap reads the spec, sniffs
 the traffic when no spec exists, and prints:
 
-- **A Python CLI** (`<api>-dt-cli`) — Click-based, auth from env vars, JSON by default, pretty mode for humans, local SQLite mirror for compound queries, retries on transient errors.
-- **An MCP server** (`<api>-dt-mcp`) — every operation exposed as an MCP tool, stdio transport, drop into Claude Desktop or Cursor in 60 seconds.
-- **A skill** for Claude Code, Cursor (`.mdc`), and a generic `tools.json` — so any agent harness can pick up where the others left off.
+- **A Python CLI** (`<api>-dt-cli`) -- Click-based, auth from env vars, JSON by default, pretty mode for humans, local SQLite mirror for compound queries, retries on transient errors.
+- **An MCP server** (`<api>-dt-mcp`) -- every operation exposed as an MCP tool, stdio transport, drop into Claude Desktop or Cursor in 60 seconds.
+- **A skill** for Claude Code, Cursor (`.mdc`), and a generic `tools.json` -- so any agent harness can pick up where the others left off.
 - **A scorecard** grading coverage, docs, auth clarity, typed params, artifacts, and naming.
 
 ## Install
@@ -70,7 +70,7 @@ playwright install chromium
 git clone https://github.com/zanni098/DuckTap
 cd DuckTap
 pip install -e ".[dev]"
-python -m pytest tests/ -q   # 44 passed
+python -m pytest tests/ -q   # 66 passed
 ```
 
 </details>
@@ -105,12 +105,12 @@ Pressed petstore (19 operations) -> ./out
   skill:       3 files
 
 Scorecard: 92/100 (A)
-  - coverage:      95  — 19 operations exposed
-  - documentation: 100 — 19/19 operations have docs
-  - auth:          100 — 2 auth scheme(s)
-  - typed_params:   54 — 29/53 params typed/enum
-  - artifacts:     100 — 3/3 expected artifact dirs present
-  - naming:        100 — 19/19 unique operation ids
+  - coverage:      95  -- 19 operations exposed
+  - documentation: 100 -- 19/19 operations have docs
+  - auth:          100 -- 2 auth scheme(s)
+  - typed_params:   54 -- 29/53 params typed/enum
+  - artifacts:     100 -- 3/3 expected artifact dirs present
+  - naming:        100 -- 19/19 unique operation ids
 ```
 
 What you get under `./out/`:
@@ -138,12 +138,12 @@ out/
 
 | | Printing Press | **DuckTap** |
 |---|---|---|
-| Language | Go | Python — easier to extend, richer LLM ecosystem |
+| Language | Go | Python -- easier to extend, richer LLM ecosystem |
 | LLM | Claude only | **Multi-LLM via LiteLLM** (Anthropic, OpenAI, Gemini, Ollama, Groq, Azure) |
 | Skills | Claude Code | **Claude Code + Cursor `.mdc` + generic `tools.json`** |
 | UI | None | **Local FastAPI dashboard** (`ducktap ui`) |
-| Plugins | Source fork | **Entry-point plugin system** — drop-in discoverers & generators |
-| Browser sniff | Custom Go browser | **Playwright** — full HAR export, scriptable actions |
+| Plugins | Source fork | **Entry-point plugin system** -- drop-in discoverers & generators |
+| Browser sniff | Custom Go browser | **Playwright** -- full HAR export, scriptable actions |
 | Generated CLI runtime | Single Go binary | Python (pip-installable, hackable, single-file editable) |
 
 See [`docs/COMPARISON.md`](docs/COMPARISON.md) for the full feature matrix.
@@ -152,7 +152,7 @@ See [`docs/COMPARISON.md`](docs/COMPARISON.md) for the full feature matrix.
 
 ```text
 ducktap press <source>          # discover + generate (the default loop)
-ducktap research <source>       # discover only — emit normalized APISpec JSON
+ducktap research <source>       # discover only -- emit normalized APISpec JSON
 ducktap sniff <url>             # browser-sniff a site (needs [sniff] extra)
 ducktap scorecard <source>      # quality scorecard
 ducktap shipcheck <name>        # structural & runtime sanity checks
@@ -181,14 +181,14 @@ input (URL | spec | HAR)
         │
         ▼
   ┌─────────────┐
-  │  Discovery  │   openapi / har / browser-sniff / graphql (plugin) / …
+  │  Discovery  │   openapi / har / browser-sniff / graphql (plugin) / ...
   └──────┬──────┘
          ▼
    APISpec (Pydantic) ──── intermediate normalized representation
          │
          ▼
   ┌─────────────┐
-  │  Generator  │   python-cli / mcp-server / skill / …
+  │  Generator  │   python-cli / mcp-server / skill / ...
   └──────┬──────┘
          ▼
   artifacts/       (CLI pkg + MCP pkg + SKILL.md + cursor.mdc + tools.json)
@@ -203,17 +203,19 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Roadmap
 
-See [`docs/ROADMAP.md`](docs/ROADMAP.md). Highlights for v0.2+:
+See [`docs/ROADMAP.md`](docs/ROADMAP.md). Highlights for v0.3+:
 
-- LLM-assisted **polish** step (operation descriptions, command names, doc strings)
-- **GraphQL** first-class (today: plugin, beta)
-- **Auth doctor** — detect login flows during sniffing, emit accurate auth blocks
+- **GraphQL** first-class discoverer (introspection + persisted queries)
+- **Crowd-sniff** research via web search + LiteLLM
+- Smart **action recording** for browser sniff (record clicks/forms, replay headless)
+- **mitmproxy-backed sniff** as a headless-Chromium alternative
+- Rate-limit + retry-with-backoff aware request inference
 - **Compound query** macros (canonical "what's interesting about X" recipes)
 - **CLI publish** to PyPI + GitHub in one command
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE).
+MIT -- see [`LICENSE`](LICENSE).
 
 ## Acknowledgements
 

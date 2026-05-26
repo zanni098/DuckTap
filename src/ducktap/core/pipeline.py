@@ -25,7 +25,7 @@ def discover(source: str, *, hint: str | None = None, **opts: Any) -> APISpec:
             raise ValueError(f"unknown discoverer: {hint}. Have: {list(discs)}")
         return discs[hint].discover(source, **opts)
     # priority order
-    for name in ("openapi", "har", "browser-sniff"):
+    for name in ("openapi", "graphql", "har", "browser-sniff"):
         d = discs.get(name)
         if d and d.can_handle(source):
             plugins.emit("discovery.start", name=name, source=source)

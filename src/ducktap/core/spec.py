@@ -67,7 +67,7 @@ class AuthScheme(BaseModel):
 
 
 class APISpec(BaseModel):
-    """Normalized API specification — DuckTap's single intermediate format."""
+    """Normalized API specification -- DuckTap's single intermediate format."""
 
     name: str                  # canonical slug, e.g. "petstore"
     display_name: str = ""
@@ -78,6 +78,7 @@ class APISpec(BaseModel):
     operations: list[Operation] = Field(default_factory=list)
     auth_schemes: list[AuthScheme] = Field(default_factory=list)
     source: dict[str, Any] = Field(default_factory=dict)  # provenance: discovery method + source
+    extensions: dict[str, Any] = Field(default_factory=dict)  # vendor extensions
 
     def by_tag(self) -> dict[str, list[Operation]]:
         groups: dict[str, list[Operation]] = {}

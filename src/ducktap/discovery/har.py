@@ -14,7 +14,61 @@ from urllib.parse import urlparse
 
 from ducktap.core import plugins
 from ducktap.core.naming import operation_id_from_path, slugify
-from ducktap.core.spec import APISpec, Operation, Param, Response
+from ducktap.core.spec import APISpec, AuthScheme, Operation, Param, Response
+
+# Rate-limit header names (RFC 6585 + common vendor extensions)
+_RATE_LIMIT_HEADERS = [
+    "x-ratelimit-limit",
+    "x-ratelimit-remaining",
+    "x-ratelimit-reset",
+    "x-rate-limit-limit",
+    "x-rate-limit-remaining",
+    "x-rate-limit-reset",
+    "ratelimit-limit",
+    "ratelimit-remaining",
+    "ratelimit-reset",
+    "retry-after",
+]
+
+
+def _detect_rate_limits(entries: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """Scan HAR entries for rate-limit headers and infer policy + retry strategy."""
+    limits: dict[str, Any] = {}
+    retry_after: list[int] = []
+    statuses: set[int] = set()
+    for e in entries:
+        resp = e.get("response") or {}
+        st = resp.get("status", 0)
+        if st in (429, 503):
+            statuses.add(st)
+        for h in resp.get("headers", []):
+            name = h.get("name", "").lower()
+            val = h.get("value", "")
+            if name in _RATE_LIMIT_HEADERS:
+                try:
+                    limits[name] = int(val)
+                except ValueError:
+                    limits[name] = val
+            if name == "retry-after":
+                try:
+                    retry_after.append(int(val))
+                except ValueError:
+                    pass
+    if not limits and not statuses:
+        return None
+    result: dict[str, Any] = {
+        "headers_found": list(limits.keys()),
+        "statuses_seen": sorted(statuses),
+    }
+    if "ratelimit-limit" in limits or "x-ratelimit-limit" in limits:
+        result["limit"] = limits.get("ratelimit-limit") or limits.get("x-ratelimit-limit")
+    if retry_after:
+        result["retry_after_seconds"] = retry_after[0]
+        result["retry_strategy"] = "exponential backoff starting at 1s, max 60s"
+    elif statuses:
+        result["retry_strategy"] = "exponential backoff starting at 1s, max 60s"
+    return result
+
 
 _PATH_ID_RE = re.compile(r"^[0-9a-f-]{8,}$|^\d+$", re.IGNORECASE)
 
@@ -28,6 +82,70 @@ def _generalize_path(path: str) -> str:
             parts.append(seg)
     return "/".join(parts) or "/"
 
+
+
+_AUTH_PATTERNS = [
+    (re.compile(r'oauth|openid|sso|saml', re.I), 'oauth2', 'OAuth 2.0 / SSO redirect detected'),
+    (re.compile(r'login|signin|sign-in|authenticate', re.I), 'apiKey', 'Login page detected -- likely session or API key auth'),
+    (re.compile(r'api[_-]?key|x-api-key', re.I), 'apiKey', 'API key header pattern detected'),
+    (re.compile(r'bearer|jwt|token', re.I), 'http', 'Bearer token pattern detected'),
+]
+
+
+def _detect_auth(entries: list[dict[str, Any]], host: str) -> list[AuthScheme]:
+    """Scan HAR entries for auth flows and return inferred auth schemes."""
+    schemes: list[AuthScheme] = []
+    seen: set[str] = set()
+    for e in entries:
+        req = e.get('request') or {}
+        resp = e.get('response') or {}
+        url = req.get('url', '')
+        # Check redirects to auth endpoints
+        if resp.get('status', 0) in (301, 302, 307, 308):
+            for h in resp.get('headers', []):
+                if h.get('name', '').lower() == 'location':
+                    loc = h.get('value', '')
+                    for pat, atype, desc in _AUTH_PATTERNS:
+                        if pat.search(loc) and atype not in seen:
+                            seen.add(atype)
+                            env = f"{slugify(host).upper().replace('-', '_')}_TOKEN"
+                            if atype == 'apiKey':
+                                env = f"{slugify(host).upper().replace('-', '_')}_API_KEY"
+                            schemes.append(AuthScheme(
+                                name=f"{atype}_auth", type=atype,
+                                env_var=env, description=desc,
+                            ))
+        # Check request headers for auth patterns
+        for h in req.get('headers', []):
+            name = h.get('name', '').lower()
+            val = h.get('value', '')
+            if name == 'authorization' and 'bearer' in val.lower() and 'http' not in seen:
+                seen.add('http')
+                schemes.append(AuthScheme(
+                    name='bearer_auth', type='http', scheme='bearer',
+                    env_var=f"{slugify(host).upper().replace('-', '_')}_TOKEN",
+                    description='Bearer token from Authorization header',
+                ))
+            if name == 'x-api-key' and 'apiKey' not in seen:
+                seen.add('apiKey')
+                schemes.append(AuthScheme(
+                    name='api_key', type='apiKey', location='header',
+                    parameter_name='X-API-Key',
+                    env_var=f"{slugify(host).upper().replace('-', '_')}_API_KEY",
+                    description='API key from X-API-Key header',
+                ))
+        # Check URL patterns for known auth providers
+        for pat, atype, desc in _AUTH_PATTERNS:
+            if pat.search(url) and atype not in seen:
+                seen.add(atype)
+                env = f"{slugify(host).upper().replace('-', '_')}_TOKEN"
+                if atype == 'apiKey':
+                    env = f"{slugify(host).upper().replace('-', '_')}_API_KEY"
+                schemes.append(AuthScheme(
+                    name=f"{atype}_auth", type=atype,
+                    env_var=env, description=desc,
+                ))
+    return schemes
 
 class HARDiscoverer:
     name = "har"
@@ -86,6 +204,10 @@ class HARDiscoverer:
             name=slugify(name), display_name=name, base_url=base,
             server_urls=[base], source={"discoverer": "har", "source": source},
         )
+        spec.auth_schemes = _detect_auth(entries, host)
+        rate_info = _detect_rate_limits(entries)
+        if rate_info:
+            spec.extensions["x-ducktap-rate-limits"] = rate_info
 
         for (method, path, h), es in clusters.items():
             if h != host:
@@ -114,7 +236,7 @@ class HARDiscoverer:
 
             op_id = operation_id_from_path(method, path)
             spec.operations.append(Operation(
-                operation_id=op_id, method=method, path=path,  # type: ignore[arg-type]
+                operation_id=op_id, method=method, path=path,
                 summary=f"{method} {path}",
                 params=params,
                 responses=[Response(status="200", description="OK")],

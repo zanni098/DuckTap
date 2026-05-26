@@ -181,7 +181,7 @@ def test_4xx_emits_error_to_stderr(cli_module, monkeypatch):
     _install_mock(monkeypatch, cli_client, handler)
 
     from click.testing import CliRunner
-    r = CliRunner().invoke(
+    r = CliRunner(mix_stderr=False).invoke(
         cli_main.cli, ["--no-cache", "get-pet", "--pet-id", "999"]
     )
     assert r.exit_code == 3
@@ -272,7 +272,7 @@ def test_api_errors_use_typed_exit_codes(cli_module, monkeypatch):
     _install_mock(monkeypatch, cli_client, handler)
 
     from click.testing import CliRunner
-    r = CliRunner().invoke(cli_main.cli, ["--no-cache", "get-pet", "--pet-id", "1"])
+    r = CliRunner(mix_stderr=False).invoke(cli_main.cli, ["--no-cache", "get-pet", "--pet-id", "1"])
     assert r.exit_code == 7
     err = json.loads(r.stderr)
     assert err["status"] == 429

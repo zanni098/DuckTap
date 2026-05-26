@@ -13,13 +13,15 @@ from ducktap import __version__
 from ducktap.catalog import get_entry, list_entries
 from ducktap.core import plugins
 from ducktap.core.pipeline import discover, press
+from ducktap.crowd_sniff import crowd_sniff
+from ducktap.polish import polish, rename
 from ducktap.verify.scorecard import score
 from ducktap.verify.shipcheck import shipcheck
 
 app = typer.Typer(
     name="ducktap",
     help=(
-        "DuckTap — print agent-native CLIs, MCP servers, and skills from any "
+        "DuckTap â print agent-native CLIs, MCP servers, and skills from any "
         "API or website."
     ),
     no_args_is_help=True,
@@ -66,7 +68,7 @@ def press_cmd(
         console.print(f"  [yellow]{tgt}[/]: {len(files)} files")
     console.print(f"\n[bold]Scorecard[/]: {sc.overall}/100 ({sc.grade})")
     for s in sc.scores:
-        console.print(f"  - {s.dimension}: {s.score} — {s.notes}")
+        console.print(f"  - {s.dimension}: {s.score} â {s.notes}")
 
 
 # (no alias needed; the command is named "press" directly)
@@ -212,6 +214,65 @@ def sniff(
     console.print(f"[green]Sniffed[/] {url} -> [cyan]{out}[/] "
                   f"({len(result.spec.operations)} ops)")
 
+
+
+
+@app.command()
+def polish_cmd(
+    source: str = typer.Argument(..., help="OpenAPI URL/file, HAR file, or existing .apispec.json"),
+    out: Path = typer.Option(Path("./polished.json"), "--out", "-o", help="Output APISpec JSON path"),
+    descriptions_only: bool = typer.Option(False, "--descriptions-only",
+                                            help="Only polish descriptions, leave summaries untouched."),
+    model: str | None = typer.Option(None, "--model", help="LiteLLM model override"),
+) -> None:
+    """LLM-assisted rewrite of operation summaries and descriptions."""
+    console.print(f"[bold]Polishing[/] {source} ...")
+    spec = polish(source, out_json=out, descriptions_only=descriptions_only, model=model)
+    console.print(f"[green]Polished[/] {len(spec.operations)} operations -> {out}")
+
+
+@app.command()
+def rename_cmd(
+    source: str = typer.Argument(..., help="OpenAPI URL/file, HAR file, or existing .apispec.json"),
+    out: Path = typer.Option(Path("./renamed.json"), "--out", "-o", help="Output APISpec JSON path"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show renames without writing"),
+    model: str | None = typer.Option(None, "--model", help="LiteLLM model override"),
+) -> None:
+    """LLM-assisted renaming of unwieldy operation IDs."""
+    console.print(f"[bold]Renaming[/] {source} ...")
+    mapping = rename(source, out_json=out, dry_run=dry_run, model=model)
+    if not mapping:
+        console.print("[yellow]No changes suggested.[/]")
+        return
+    table = Table(title=f"rename suggestions ({len(mapping)} operations)")
+    table.add_column("old")
+    table.add_column("new")
+    for old, new in mapping.items():
+        table.add_row(old, new)
+    console.print(table)
+    if dry_run:
+        console.print("[dim]Use without --dry-run to apply.[/]")
+    else:
+        console.print(f"[green]Wrote[/] renamed spec -> {out}")
+
+
+@app.command()
+def crowd_sniff_cmd(
+    api_name: str = typer.Argument(..., help="API or service name to research"),
+    model: str | None = typer.Option(None, "--model", help="LiteLLM model override"),
+) -> None:
+    """Study existing community CLIs and MCP servers via web search."""
+    console.print(f"[bold]Crowd-sniffing[/] {api_name} ...")
+    result = crowd_sniff(api_name, model=model)
+    console.print(f"[green]Found[/] {result['results_found']} unique sources")
+    if result['sources']:
+        table = Table(title="Sources")
+        table.add_column("Title")
+        table.add_column("URL")
+        for s in result['sources']:
+            table.add_row(s['title'], s['url'])
+        console.print(table)
+    console.print(result['summary'])
 
 def main() -> None:
     app()
