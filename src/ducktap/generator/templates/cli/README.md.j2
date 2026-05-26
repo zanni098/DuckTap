@@ -65,6 +65,7 @@ Operations without a usable tag stay at the top level.
 | `--profile NAME` | none | Load saved flag defaults from `~/.ducktap/{{ spec.name }}/profiles/<name>.json`. |
 | `--cache` / `--no-cache` | `--cache` | Mirror GETs into `~/.ducktap/{{ spec.name }}/mirror.sqlite`. |
 | `--cache-ttl` | `300` | Mirror TTL in seconds. |
+| `--save NAME` | none | Save successful responses into a local queryable collection. |
 
 ## Agent mode
 
@@ -89,6 +90,17 @@ Saved profiles let an agent persist a flag set:
 ```bash
 {{ cli_bin }} profile save dev --format jsonl --compact --rate-limit 5
 {{ cli_bin }} --profile dev <command>
+```
+
+## Local Data
+
+Use `--save` to keep successful responses in the local response lake, then query
+or search that collection without making another API request:
+
+```bash
+{{ cli_bin }} --save prod {% for op in operations[:1] %}{% if op.tags %}{{ op.tags[0] | cmd }} {% endif %}{{ op.operation_id | cmd }}{% endfor %}
+{{ cli_bin }} data query "select path, body from records limit 5"
+{{ cli_bin }} data search "needle"
 ```
 
 Exit codes: `0` success, `3` not found, `4` auth, `5` API error, `7` rate limited, `10` local configuration error.

@@ -29,6 +29,17 @@ class Mirror:
                 fetched_at REAL NOT NULL
             )
         """)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                collection TEXT NOT NULL,
+                method TEXT NOT NULL,
+                path TEXT NOT NULL,
+                url TEXT NOT NULL,
+                body TEXT NOT NULL,
+                saved_at REAL NOT NULL
+            )
+        """)
         self.conn.commit()
 
     @staticmethod
@@ -63,3 +74,42 @@ class Mirror:
         cur = self.conn.execute("DELETE FROM responses")
         self.conn.commit()
         return cur.rowcount
+
+    def save_records(self, collection: str, method: str, path: str, url: str, value: Any) -> int:
+        items = value if isinstance(value, list) else [value]
+        rows = [
+            (collection, method.upper(), path, url, json.dumps(item, default=str), time.time())
+            for item in items
+        ]
+        self.conn.executemany(
+            "INSERT INTO records(collection, method, path, url, body, saved_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            rows,
+        )
+        self.conn.commit()
+        return len(rows)
+
+    def query(self, sql: str) -> list[dict[str, Any]]:
+        if not sql.lstrip().lower().startswith("select"):
+            raise ValueError("only SELECT queries are allowed")
+        cur = self.conn.execute(sql)
+        cols = [d[0] for d in cur.description or []]
+        return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
+
+    def search(self, text: str, limit: int = 20) -> list[dict[str, Any]]:
+        rows = self.conn.execute(
+            "SELECT collection, method, path, url, body, saved_at FROM records "
+            "WHERE body LIKE ? ORDER BY saved_at DESC LIMIT ?",
+            (f"%{text}%", limit),
+        ).fetchall()
+        return [
+            {
+                "collection": row[0],
+                "method": row[1],
+                "path": row[2],
+                "url": row[3],
+                "body": json.loads(row[4]),
+                "saved_at": row[5],
+            }
+            for row in rows
+        ]

@@ -401,6 +401,59 @@ def test_profile_save_and_apply(cli_module, tmp_path, monkeypatch):
     assert parsed == [{"id": 1, "name": "rex", "status": "available"}]
 
 
+def test_save_and_data_query_round_trip(cli_module, tmp_path, monkeypatch):
+    cli_main, cli_client = cli_module
+    monkeypatch.setenv("DUCKTAP_HOME", str(tmp_path))
+
+    def handler(req):
+        return httpx.Response(200, json=[
+            {"id": 1, "name": "rex", "status": "available"},
+            {"id": 2, "name": "spot", "status": "pending"},
+        ])
+
+    _install_mock(monkeypatch, cli_client, handler)
+
+    from click.testing import CliRunner
+    runner = CliRunner()
+    r = runner.invoke(
+        cli_main.cli,
+        ["--no-cache", "--save", "pets", "list-pets"],
+    )
+    assert r.exit_code == 0, r.output
+
+    r = runner.invoke(
+        cli_main.cli,
+        ["data", "query", "select json_extract(body, '$.name') as name from records order by name"],
+    )
+    assert r.exit_code == 0, r.output
+    rows = json.loads(r.output)
+    assert rows == [{"name": "rex"}, {"name": "spot"}]
+
+
+def test_data_search_finds_saved_records(cli_module, tmp_path, monkeypatch):
+    cli_main, cli_client = cli_module
+    monkeypatch.setenv("DUCKTAP_HOME", str(tmp_path))
+
+    def handler(req):
+        return httpx.Response(200, json={"id": 42, "name": "needle pet"})
+
+    _install_mock(monkeypatch, cli_client, handler)
+
+    from click.testing import CliRunner
+    runner = CliRunner()
+    r = runner.invoke(
+        cli_main.cli,
+        ["--no-cache", "--save", "pets", "get-pet", "--pet-id", "42"],
+    )
+    assert r.exit_code == 0, r.output
+
+    r = runner.invoke(cli_main.cli, ["data", "search", "needle"])
+    assert r.exit_code == 0, r.output
+    rows = json.loads(r.output)
+    assert rows[0]["collection"] == "pets"
+    assert rows[0]["body"]["name"] == "needle pet"
+
+
 def test_dry_run_payload_includes_grouped_command_context(cli_module, monkeypatch):
     """Smoke-check: dry-run still works after the tag-grouped tree refactor
     for operations without tags (mini fixture has no tags -> stays flat)."""

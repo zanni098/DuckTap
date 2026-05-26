@@ -58,6 +58,8 @@ Auth env vars (set before running):
               help="Suppress successful output; errors still go to stderr.")
 @click.option("--dry-run", is_flag=True, default=False,
               help="Print the request that would be sent without calling the API.")
+@click.option("--save", "save_collection", default="",
+              help="Save successful response records to the local data lake collection.")
 @click.option("--debug", is_flag=True, default=False,
               help="Print request/response details to stderr.")
 @click.option("--rate-limit", "rate_limit", type=float, default=0.0,
@@ -72,7 +74,7 @@ Auth env vars (set before running):
 def cli(ctx: click.Context, agent: bool, output_format: str | None,
         json_output: bool, no_color: bool, cache: bool, cache_ttl: int,
         select_fields: str, compact: bool, quiet: bool, dry_run: bool,
-        debug: bool, rate_limit: float, request_timeout: float,
+        save_collection: str, debug: bool, rate_limit: float, request_timeout: float,
         profile_name: str | None) -> None:
     ctx.ensure_object(dict)
 
@@ -104,6 +106,7 @@ def cli(ctx: click.Context, agent: bool, output_format: str | None,
     ctx.obj["compact"] = compact or profile.get("compact", False)
     ctx.obj["quiet"] = quiet or profile.get("quiet", False)
     ctx.obj["dry_run"] = dry_run
+    ctx.obj["save"] = save_collection or profile.get("save", "")
     ctx.obj["debug"] = debug or profile.get("debug", False)
     ctx.obj["rate_limit"] = rate_limit or profile.get("rate_limit", 0.0)
     ctx.obj["timeout"] = request_timeout or profile.get("timeout", 0.0)

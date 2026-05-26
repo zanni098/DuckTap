@@ -25,6 +25,9 @@ def test_press_petstore_end_to_end(out_dir):
     assert "python-cli" in result.artifacts
     assert "mcp-server" in result.artifacts
     assert "skill" in result.artifacts
+    assert "typescript-cli" in result.artifacts
+    assert "go-cli" in result.artifacts
+    assert "rust-cli" in result.artifacts
 
     # All emitted .py files parse cleanly
     cli_dir = out_dir / "petstore-dt-cli"
@@ -49,6 +52,9 @@ def test_press_petstore_end_to_end(out_dir):
     sc = score(result.spec, str(out_dir))
     assert 0 <= sc.overall <= 100
     assert sc.grade in {"A", "B", "C", "D", "F"}
+    dimensions = {s.dimension for s in sc.scores}
+    assert "agent_native" in dimensions
+    assert "local_data" in dimensions
 
 
 def test_generated_packages_actually_import(out_dir):
@@ -114,6 +120,10 @@ def test_generated_readme_is_agent_polished(out_dir):
     assert "--format" in readme
     # v0.2.2: auth-doctor surfaces in the README too.
     assert "auth-doctor" in readme
+    # v0.6: local response lake commands are documented.
+    assert "--save" in readme
+    assert "data query" in readme
+    assert "data search" in readme
 
 
 def test_generated_cli_exposes_doctor(out_dir):

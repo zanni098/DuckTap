@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import sys
+import zipfile
 from pathlib import Path
 
 import typer
@@ -12,7 +13,7 @@ from rich.table import Table
 from ducktap import __version__
 from ducktap.catalog import get_entry, list_entries
 from ducktap.core import plugins
-from ducktap.core.pipeline import discover, press
+from ducktap.core.pipeline import DEFAULT_TARGETS, discover, press
 from ducktap.verify.scorecard import score
 from ducktap.verify.shipcheck import shipcheck
 
@@ -50,9 +51,9 @@ def press_cmd(
     out: Path = typer.Option(Path("./out"), "--out", "-o", help="Output directory"),
     name: str | None = typer.Option(None, "--name", "-n", help="Override CLI name"),
     hint: str | None = typer.Option(None, "--from",
-                                       help="Force discoverer: openapi | har | browser-sniff"),
+                                       help="Force discoverer: openapi | har | browser-sniff | graphql"),
     targets: str = typer.Option(
-        "python-cli,mcp-server,skill", "--targets", "-t",
+        ",".join(DEFAULT_TARGETS), "--targets", "-t",
         help="Comma-separated targets to generate.",
     ),
 ) -> None:
@@ -112,6 +113,72 @@ def scorecard(
             f"[red]scorecard {sc.overall} < --fail-under {fail_under}[/]"
         )
         raise typer.Exit(2)
+
+
+@app.command()
+def publish(
+    name: str = typer.Argument(..., help="Generated CLI slug, e.g. petstore"),
+    out_dir: Path = typer.Option(Path("./out"), "--out-dir"),
+    dist_dir: Path = typer.Option(Path("./dist"), "--dist-dir"),
+    dry_run: bool = typer.Option(True, "--dry-run/--live",
+                                 help="Package and validate locally without uploading."),
+) -> None:
+    """Package generated DuckTap artifacts and write a publish manifest."""
+    cli_dir = out_dir / f"{name}-dt-cli"
+    mcp_dir = out_dir / f"{name}-dt-mcp"
+    skill_dir = out_dir / "skills" / f"ducktap-{name}"
+    optional_dirs = {
+        "typescript_cli": out_dir / f"{name}-dt-ts-cli",
+        "go_cli": out_dir / f"{name}-dt-go-cli",
+        "rust_cli": out_dir / f"{name}-dt-rust-cli",
+    }
+    missing = [str(p) for p in (cli_dir, mcp_dir, skill_dir) if not p.exists()]
+    if missing:
+        raise typer.BadParameter(f"missing generated artifacts: {missing}")
+    artifact_dirs = {
+        "python_cli": cli_dir,
+        "mcp_server": mcp_dir,
+        "skill": skill_dir,
+        **{key: path for key, path in optional_dirs.items() if path.exists()},
+    }
+
+    from ducktap.core.spec import APISpec
+
+    spec_json = out_dir / f"{name}.apispec.json"
+    spec = None
+    if spec_json.exists():
+        spec = APISpec.model_validate_json(spec_json.read_text(encoding="utf-8"))
+        sc = score(spec, str(out_dir)).to_dict()
+    else:
+        sc = {"overall": None, "grade": "unknown", "scores": []}
+
+    checks = [r.__dict__ for r in shipcheck(str(out_dir), name)]
+    dist_dir.mkdir(parents=True, exist_ok=True)
+    archive = dist_dir / f"{name}-ducktap-artifacts.zip"
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
+        for root in artifact_dirs.values():
+            for path in root.rglob("*"):
+                if path.is_file():
+                    zf.write(path, path.relative_to(out_dir))
+    manifest = {
+        "name": name,
+        "dry_run": dry_run,
+        "archive": str(archive),
+        "artifacts": {key: str(path) for key, path in artifact_dirs.items()},
+        "scorecard": sc,
+        "shipcheck": checks,
+        "next_steps": [
+            "Inspect the archive contents.",
+            "Publish the generated CLI package with twine or your release workflow.",
+            "Open a GitHub PR for the skill/library artifacts.",
+        ],
+    }
+    manifest_path = dist_dir / f"{name}-publish-manifest.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
+    console.print(f"[green]Packaged[/] {archive}")
+    console.print(f"[green]Manifest[/] {manifest_path}")
+    if not dry_run:
+        console.print("[yellow]Live upload is intentionally not automated yet; use the manifest next steps.[/]")
 
 
 @app.command(name="shipcheck")
