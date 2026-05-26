@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.4.0 -- 2026-05-26
+
+Compound queries + FTS5 search + DuckDB backend + macro recipes.
+
+### Added
+
+- **Compound command macros** (`src/ducktap/macros.py`)
+  -- declarative YAML recipes that chain multiple API operations with
+  Jinja2-style step references (`{{ steps[0].id }}`).
+  New `ducktap macro` subcommands: `list`, `run`, `new`.
+- **FTS5 full-text search** in generated CLI mirrors (`mirror.py.j2`)
+  -- SQLite FTS5 virtual table with triggers keeps the search index in
+  sync with the `records` table. `search()` now uses MATCH/rank instead
+  of slow LIKE queries.
+- **DuckDB backend option** (`mirror.py.j2`)
+  -- set `DUCKTAP_MIRROR_BACKEND=duckdb` or pass `backend="duckdb"`
+  to use DuckDB instead of sqlite3 for analytical workloads.
+- **Top-level `query` command** in generated CLIs (`commands.py.j2`)
+  -- `<api>-dt-cli query "SELECT ..."` as a shortcut to `data query`.
+
+### Changed
+
+- Generated `Mirror` class now supports pluggable backends via
+  `_SQLiteBackend` and `_DuckDBBackend` internal adapters.
+
 ## 0.3.0 — 2026-05-26
 
 Sniffing v2 + first-class GraphQL + community research.

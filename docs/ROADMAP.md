@@ -114,12 +114,12 @@ over) Printing Press.
 - [x] mitmproxy-backed sniff (no headless Chromium needed) as an alternative
 - [x] Rate-limit + retry-with-backoff aware request inference
 
-## v0.4.0 -- Compound queries
+## v0.4.0 -- Compound queries ✓
 
-- [ ] **Compound command macros**: declarative recipes that chain multiple operations
-- [ ] Local "data lake" mode: persistent mirror, full-text search over JSON
-- [ ] DuckDB backend option as alternative to SQLite
-- [ ] Built-in `<api>-dt-cli query "SELECT ..."` for SQL over the mirror
+- [x] **Compound command macros**: declarative recipes that chain multiple operations
+- [x] Local "data lake" mode: persistent mirror, full-text search over JSON (FTS5)
+- [x] DuckDB backend option as alternative to SQLite
+- [x] Built-in `<api>-dt-cli query "SELECT ..."` for SQL over the mirror
 
 ## v0.5.0 -- Publish
 
@@ -158,6 +158,10 @@ over) Printing Press.
 | Smart action recording + replay | ✅ landed v0.3.0 |
 | mitmproxy-backed sniff | ✅ landed v0.3.0 |
 | Rate-limit aware inference | ✅ landed v0.3.0 |
+| Compound command macros | ✅ landed v0.4.0 |
+| FTS5 full-text search | ✅ landed v0.4.0 |
+| DuckDB mirror backend | ✅ landed v0.4.0 |
+| Top-level `query` command | ✅ landed v0.4.0 |
 | Domain-specific SQLite tables + FTS5 | key-value cache only (planned v0.4) |
 | Compound query commands (`stale`, `health`, `bottleneck`) | planned v0.4 |
 | 2-tier scorecard (domain correctness) | 1-tier structural only (planned v0.4) |

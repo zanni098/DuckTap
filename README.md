@@ -203,14 +203,12 @@ See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## Roadmap
 
-See [`docs/ROADMAP.md`](docs/ROADMAP.md). Highlights for v0.3+:
+See [`docs/ROADMAP.md`](docs/ROADMAP.md). Highlights for v0.4+:
 
-- **GraphQL** first-class discoverer (introspection + persisted queries)
-- **Crowd-sniff** research via web search + LiteLLM
-- Smart **action recording** for browser sniff (record clicks/forms, replay headless)
-- **mitmproxy-backed sniff** as a headless-Chromium alternative
-- Rate-limit + retry-with-backoff aware request inference
-- **Compound query** macros (canonical "what's interesting about X" recipes)
+- **Compound command macros** -- YAML recipes that chain API calls with step references
+- **FTS5 full-text search** over saved JSON responses in the local data lake
+- **DuckDB backend** as an alternative to SQLite for analytical workloads
+- Top-level **`query`** command for SQL over the mirror
 - **CLI publish** to PyPI + GitHub in one command
 
 ## License
