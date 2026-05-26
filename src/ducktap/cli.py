@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -14,6 +15,7 @@ from ducktap.catalog import get_entry, list_entries
 from ducktap.core import plugins
 from ducktap.core.pipeline import discover, press
 from ducktap.crowd_sniff import crowd_sniff
+from ducktap.macros import Macro, list_macros, run_macro
 from ducktap.polish import polish, rename
 from ducktap.verify.scorecard import score
 from ducktap.verify.shipcheck import shipcheck
@@ -21,7 +23,7 @@ from ducktap.verify.shipcheck import shipcheck
 app = typer.Typer(
     name="ducktap",
     help=(
-        "DuckTap â print agent-native CLIs, MCP servers, and skills from any "
+        "DuckTap -- print agent-native CLIs, MCP servers, and skills from any "
         "API or website."
     ),
     no_args_is_help=True,
@@ -68,7 +70,7 @@ def press_cmd(
         console.print(f"  [yellow]{tgt}[/]: {len(files)} files")
     console.print(f"\n[bold]Scorecard[/]: {sc.overall}/100 ({sc.grade})")
     for s in sc.scores:
-        console.print(f"  - {s.dimension}: {s.score} â {s.notes}")
+        console.print(f"  - {s.dimension}: {s.score} -- {s.notes}")
 
 
 # (no alias needed; the command is named "press" directly)
@@ -273,6 +275,90 @@ def crowd_sniff_cmd(
             table.add_row(s['title'], s['url'])
         console.print(table)
     console.print(result['summary'])
+
+
+macro_app = typer.Typer(help="Run and manage compound command macros.")
+app.add_typer(macro_app, name="macro")
+
+
+@macro_app.command("list")
+def macro_list(
+    macro_dir: Path = typer.Option(Path("./macros"), "--dir", "-d", help="Directory containing .yaml macro files"),
+) -> None:
+    """List available macro recipes."""
+    macros = list_macros(str(macro_dir))
+    if not macros:
+        console.print(f"[yellow]No macros found in {macro_dir}[/]")
+        return
+    table = Table(title=f"Macros in {macro_dir}")
+    table.add_column("name")
+    table.add_column("description")
+    table.add_column("steps")
+    for m in macros:
+        table.add_row(m["name"], m.get("description", ""), str(len(m.get("steps", []))))
+    console.print(table)
+
+
+@macro_app.command("run")
+def macro_run(
+    macro_file: Path = typer.Argument(..., help="Path to a .yaml macro recipe"),
+    base_url: str = typer.Option("", "--base-url", help="Override API base URL"),
+    auth_token: str = typer.Option("", "--auth-token", help="Bearer token or API key"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Print steps without calling API"),
+) -> None:
+    """Execute a compound macro recipe against a live API."""
+    macro = Macro.from_file(str(macro_file))
+    console.print(f"[bold]Running macro[/] [cyan]{macro.name}[/] ({len(macro.steps)} steps)")
+
+    import httpx
+    client = httpx.Client(base_url=base_url or "", headers={})
+    if auth_token:
+        client.headers["Authorization"] = f"Bearer {auth_token}"
+
+    def invoke(op: str, **params) -> Any:
+        if dry_run:
+            return {"dry_run": True, "operation": op, "params": params}
+        # Naive dispatch: assume operation maps to GET <base_url>/...
+        # Real implementation would need APISpec to map operation_id -> method/path
+        url = params.pop("url", f"/{op.replace('-', '/')}")
+        method = params.pop("method", "GET")
+        if method.upper() == "GET":
+            r = client.get(url, params=params)
+        elif method.upper() == "POST":
+            r = client.post(url, json=params)
+        else:
+            r = client.request(method, url, params=params)
+        r.raise_for_status()
+        return r.json()
+
+    results = run_macro(macro, invoke)
+    for i, result in enumerate(results):
+        console.print(f"\n[bold]Step {i + 1} result:[/]")
+        console.print(json.dumps(result, indent=2, default=str))
+
+
+@macro_app.command("new")
+def macro_new(
+    name: str = typer.Argument(..., help="Name for the new macro"),
+    out: Path = typer.Option(Path("./macros"), "--out", "-o", help="Output directory"),
+) -> None:
+    """Scaffold a new macro recipe YAML file."""
+    out.mkdir(parents=True, exist_ok=True)
+    path = out / f"{name}.yaml"
+    scaffold = (
+        f"name: {name}\n"
+        "description: Describe what this macro does\n"
+        "steps:\n"
+        "  - operation: list-pets\n"
+        "    params: {}\n"
+        "    save_as: pets\n"
+        "  - operation: get-pet\n"
+        "    params:\n"
+        "      petId: '{{ steps[0].id }}'\n"
+    )
+    path.write_text(scaffold, encoding="utf-8")
+    console.print(f"[green]Created[/] macro scaffold -> {path}")
+
 
 def main() -> None:
     app()

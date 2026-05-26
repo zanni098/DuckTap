@@ -550,6 +550,23 @@ def register(cli: click.Group) -> None:
         rows = mirror.search(text, limit=limit)
         _emit(ctx, rows, raw=True)
 
+    # Top-level query shortcut (v0.4.0)
+    @cli.command("query", help="Run read-only SQL over saved / cached responses.")
+    @click.argument("sql")
+    @click.pass_context
+    def query_cmd(ctx: click.Context, sql: str) -> None:
+        client = _get_client(ctx)
+        mirror = getattr(client, "mirror", None)
+        if not mirror:
+            click.echo(json.dumps({"error": "no mirror available -- use --save or --cache"}), err=True)
+            ctx.exit(10)
+        try:
+            rows = mirror.query(sql)
+        except ValueError as e:
+            click.echo(json.dumps({"error": str(e)}), err=True)
+            ctx.exit(10)
+        _emit(ctx, rows, raw=True)
+
     # ------------------------------------------------------------------
     # Tag-grouped operation tree. Operations are registered under their
     # first tag (kebab-cased). Operations without a usable tag remain at

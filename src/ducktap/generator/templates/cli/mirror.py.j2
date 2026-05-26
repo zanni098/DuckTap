@@ -1,4 +1,11 @@
-"""SQLite mirror — local cache of API responses for compound queries."""
+"""SQLite mirror -- local cache of API responses for compound queries.
+
+Supports two backends:
+  - sqlite3 (default, always available)
+  - duckdb (optional, faster analytical queries)
+
+FTS5 full-text search is available when using the sqlite3 backend.
+"""
 from __future__ import annotations
 
 import hashlib
@@ -10,6 +17,15 @@ from pathlib import Path
 from typing import Any
 
 
+_Backend = "sqlite3"
+
+try:
+    import duckdb
+    _Backend = "duckdb"
+except ImportError:
+    pass
+
+
 def _mirror_dir() -> Path:
     home = Path(os.environ.get("DUCKTAP_HOME", str(Path.home() / ".ducktap")))
     p = home / "{{ spec.name }}"
@@ -17,11 +33,27 @@ def _mirror_dir() -> Path:
     return p
 
 
-class Mirror:
-    def __init__(self, ttl_seconds: int = 300, path: str | None = None):
-        self.ttl = ttl_seconds
-        self.path = path or str(_mirror_dir() / "mirror.sqlite")
-        self.conn = sqlite3.connect(self.path)
+class _SQLiteBackend:
+    """sqlite3-backed mirror with FTS5 full-text search."""
+
+    def __init__(self, path: str) -> None:
+        self.conn = sqlite3.connect(path)
+        self._ensure_tables()
+        self.conn.commit()
+
+    def execute(self, sql: str, params: tuple[Any, ...] = ()) -> sqlite3.Cursor:
+        return self.conn.execute(sql, params)
+
+    def executemany(self, sql: str, params: list[tuple[Any, ...]]) -> sqlite3.Cursor:
+        return self.conn.executemany(sql, params)
+
+    def commit(self) -> None:
+        self.conn.commit()
+
+    def close(self) -> None:
+        self.conn.close()
+
+    def _ensure_tables(self) -> None:
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS responses (
                 key TEXT PRIMARY KEY,
@@ -29,8 +61,90 @@ class Mirror:
                 fetched_at REAL NOT NULL
             )
         """)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS records (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                collection TEXT NOT NULL,
+                method TEXT NOT NULL,
+                path TEXT NOT NULL,
+                url TEXT NOT NULL,
+                body TEXT NOT NULL,
+                saved_at REAL NOT NULL
+            )
+        """)
+        # FTS5 virtual table for full-text search over JSON bodies
+        self.conn.execute("""
+            CREATE VIRTUAL TABLE IF NOT EXISTS records_fts USING fts5(
+                collection, method, path, url, body,
+                content='records', content_rowid='id'
+            )
+        """)
+        # Triggers to keep FTS5 index in sync
+        self.conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS records_ai AFTER INSERT ON records BEGIN
+                INSERT INTO records_fts(rowid, collection, method, path, url, body)
+                VALUES (new.id, new.collection, new.method, new.path, new.url, new.body);
+            END
+        """)
+        self.conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS records_ad AFTER DELETE ON records BEGIN
+                INSERT INTO records_fts(records_fts, rowid, collection, method, path, url, body)
+                VALUES ('delete', old.id, old.collection, old.method, old.path, old.url, old.body);
+            END
+        """)
+
+
+class _DuckDBBackend:
+    """DuckDB-backed mirror for analytical workloads."""
+
+    def __init__(self, path: str) -> None:
+        self.conn = duckdb.connect(path)
         self._ensure_tables()
+
+    def execute(self, sql: str, params: tuple[Any, ...] = ()) -> Any:
+        return self.conn.execute(sql, params)
+
+    def executemany(self, sql: str, params: list[tuple[Any, ...]]) -> Any:
+        return self.conn.executemany(sql, params)
+
+    def commit(self) -> None:
         self.conn.commit()
+
+    def close(self) -> None:
+        self.conn.close()
+
+    def _ensure_tables(self) -> None:
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS responses (
+                key TEXT PRIMARY KEY,
+                body TEXT NOT NULL,
+                fetched_at DOUBLE NOT NULL
+            )
+        """)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS records (
+                id BIGINT PRIMARY KEY,
+                collection TEXT NOT NULL,
+                method TEXT NOT NULL,
+                path TEXT NOT NULL,
+                url TEXT NOT NULL,
+                body TEXT NOT NULL,
+                saved_at DOUBLE NOT NULL
+            )
+        """)
+        # DuckDB doesn't support FTS5, but we can create an INVERTED INDEX-like query
+
+
+class Mirror:
+    def __init__(self, ttl_seconds: int = 300, path: str | None = None,
+                 backend: str | None = None):
+        self.ttl = ttl_seconds
+        self.path = path or str(_mirror_dir() / "mirror.sqlite")
+        self.backend_name = backend or os.environ.get("DUCKTAP_MIRROR_BACKEND", "sqlite3")
+        if self.backend_name == "duckdb" and _Backend == "duckdb":
+            self._db = _DuckDBBackend(self.path)
+        else:
+            self._db = _SQLiteBackend(self.path)
 
     @staticmethod
     def key(method: str, url: str, params: dict[str, Any] | None) -> str:
@@ -43,9 +157,10 @@ class Mirror:
         return h.hexdigest()
 
     def get(self, key: str) -> Any | None:
-        row = self.conn.execute(
+        cur = self._db.execute(
             "SELECT body, fetched_at FROM responses WHERE key = ?", (key,)
-        ).fetchone()
+        )
+        row = cur.fetchone()
         if not row:
             return None
         body, ts = row
@@ -54,16 +169,16 @@ class Mirror:
         return json.loads(body)
 
     def put(self, key: str, value: Any) -> None:
-        self.conn.execute(
+        self._db.execute(
             "INSERT OR REPLACE INTO responses(key, body, fetched_at) VALUES (?, ?, ?)",
             (key, json.dumps(value, default=str), time.time()),
         )
-        self.conn.commit()
+        self._db.commit()
 
     def clear(self) -> int:
-        cur = self.conn.execute("DELETE FROM responses")
-        self.conn.commit()
-        return cur.rowcount
+        cur = self._db.execute("DELETE FROM responses")
+        self._db.commit()
+        return cur.rowcount if hasattr(cur, "rowcount") else 0
 
     def save_record(self, collection: str, method: str, path: str, url: str, value: Any) -> int:
         """Persist a response into the records table (not TTL-bound)."""
@@ -72,28 +187,45 @@ class Mirror:
             (collection, method.upper(), path, url, json.dumps(item, default=str), time.time())
             for item in items
         ]
-        self.conn.executemany(
+        self._db.executemany(
             "INSERT INTO records(collection, method, path, url, body, saved_at) VALUES (?, ?, ?, ?, ?, ?)",
             rows,
         )
-        self.conn.commit()
+        self._db.commit()
         return len(rows)
 
     def query(self, sql: str) -> list[dict[str, Any]]:
         """Run a read-only SQL query over saved records."""
         if not sql.lstrip().lower().startswith("select"):
             raise ValueError("Only SELECT queries are allowed")
-        cur = self.conn.execute(sql)
-        cols = [d[0] for d in cur.description or []]
+        cur = self._db.execute(sql)
+        cols = [d[0] for d in (cur.description or [])]
         return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
 
     def search(self, text: str, limit: int = 20) -> list[dict[str, Any]]:
-        """Full-text search over saved JSON bodies."""
-        rows = self.conn.execute(
-            "SELECT collection, method, path, url, body, saved_at FROM records "
-            "WHERE body LIKE ? ORDER BY saved_at DESC LIMIT ?",
-            (f"%{text}%", limit),
-        ).fetchall()
+        """Full-text search over saved JSON bodies (FTS5 on sqlite3, LIKE fallback)."""
+        if self.backend_name == "duckdb":
+            rows = self._db.execute(
+                "SELECT collection, method, path, url, body, saved_at FROM records "
+                "WHERE body LIKE ? ORDER BY saved_at DESC LIMIT ?",
+                (f"%{text}%", limit),
+            ).fetchall()
+        else:
+            # Prefer FTS5 when available
+            try:
+                rows = self._db.execute(
+                    "SELECT r.collection, r.method, r.path, r.url, r.body, r.saved_at "
+                    "FROM records_fts fts JOIN records r ON fts.rowid = r.id "
+                    "WHERE records_fts MATCH ? ORDER BY rank LIMIT ?",
+                    (text, limit),
+                ).fetchall()
+            except Exception:
+                # Fallback to LIKE if FTS5 table isn't ready
+                rows = self._db.execute(
+                    "SELECT collection, method, path, url, body, saved_at FROM records "
+                    "WHERE body LIKE ? ORDER BY saved_at DESC LIMIT ?",
+                    (f"%{text}%", limit),
+                ).fetchall()
         return [
             {
                 "collection": row[0], "method": row[1], "path": row[2],
@@ -102,18 +234,5 @@ class Mirror:
             for row in rows
         ]
 
-    def _ensure_tables(self) -> None:
-        """Create records table if it doesn't exist (for backwards compat)."""
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS records (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                collection TEXT NOT NULL,
-                method TEXT NOT NULL,
-                path TEXT NOT NULL,
-                url TEXT NOT NULL,
-                body TEXT NOT NULL,
-                saved_at REAL NOT NULL
-            )
-        """)
-        self.conn.commit()
-
+    def close(self) -> None:
+        self._db.close()
