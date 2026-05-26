@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.6.0 — 2026-05-26
+
+Quality push toward and beyond Printing Press parity.
+
+### Added
+
+- First-class GraphQL introspection discovery via `--from graphql`.
+- Default multi-target generation: Python CLI, MCP server, agent skill,
+  TypeScript scaffold, Go scaffold, and Rust scaffold.
+- Generated Python CLIs now support `--save NAME`, `data query`, and
+  `data search` for a local SQLite response lake.
+- `ducktap publish <name>` dry-run packaging: zips generated artifacts,
+  writes a release manifest, and embeds scorecard/shipcheck results.
+- Scorecard now includes `agent_native` and `local_data` dimensions.
+- Dashboard status API and richer GUI target selector for all six targets.
+
+### Changed
+
+- `ducktap press` defaults to every built-in target. Use `--targets` to
+  generate a narrower set.
+- The generated APISpec manifest is saved to `<out>/<name>.apispec.json`
+  so publish and verification commands can reuse normalized discovery output.
+- README, roadmap, and comparison docs now describe the v0.6 surface.
+
+## 0.2.2 — 2026-05-19
+
+- Generated CLIs gained `auth-doctor` with env-var validation, actionable
+  hints, optional live probe, and typed exit codes.
+- Metadata commands such as `--dry-run`, `agent-context`, `doctor`, and
+  profile management preserve complete payloads under `--agent`.
+
+## 0.2.1 — 2026-05-18
+
+- Generated CLIs gained tag-grouped command trees, `--agent`, multi-format
+  output, `agent-context`, `which`, saved profiles, `--rate-limit`, and
+  `--timeout`.
+- Catalog expanded from 3 to 17 entries.
+- Dashboard and generated README polish shipped.
+
+## 0.2.0 — 2026-05-18
+
+- Agent-native CLI controls: `--select`, `--compact`, `--quiet`, and
+  `--dry-run`.
+- Typed exit codes and a generated `doctor` command.
+- Local FastAPI dashboard upgraded into a workbench with catalog filtering,
+  result display, and `/api/catalog`.
+
 ## 0.1.2 — 2026-05-12
 
 Quality pass. Generated CLIs are now actually usable end-to-end against

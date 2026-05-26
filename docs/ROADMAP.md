@@ -1,167 +1,103 @@
 # DuckTap Roadmap
 
-DuckTap v0.1 ships the **lean loop end-to-end**. The roadmap below charts the
-path from "scaffold + working core" to feature parity with (and improvements
-over) Printing Press.
+DuckTap now targets the same agent-CLI muscle memory as Printing Press while
+leaning into Python hackability, multi-agent output, and a local workbench.
+This document records what has landed through v0.6.0 and what remains.
 
 ## v0.1.0 — Foundation ✓
 
 - [x] Repo skeleton, MIT license, GH Actions CI
 - [x] `APISpec` intermediate model
 - [x] OpenAPI 2/3 discoverer
-- [x] HAR discoverer (request clustering, path generalization)
-- [x] Browser-sniff scaffold (Playwright)
-- [x] Python CLI generator (Click, httpx, SQLite mirror, auth from env)
-- [x] MCP server generator (mcp SDK, stdio)
-- [x] Skill generator (Claude SKILL.md, Cursor .mdc, generic tools.json)
-- [x] Multi-LLM abstraction (LiteLLM)
-- [x] Plugin registry + entry-point loader + sample GraphQL plugin
-- [x] Scorecard (6 dimensions) + shipcheck
-- [x] Catalog YAML loader + 3 starter entries (petstore, github, stripe)
-- [x] FastAPI dashboard
-- [x] Top-level Typer CLI (`press`, `research`, `sniff`, `scorecard`, `shipcheck`, `catalog`, `plugins`, `ui`)
-- [x] Petstore E2E test
+- [x] HAR discoverer
+- [x] Browser-sniff scaffold with Playwright
+- [x] Python CLI generator with Click, httpx, auth from env, retries, and SQLite mirror
+- [x] MCP server generator using the Python MCP SDK
+- [x] Skill generator for Claude Code, Cursor `.mdc`, and generic `tools.json`
+- [x] Multi-LLM abstraction via LiteLLM
+- [x] Plugin registry with entry-point loading
+- [x] Scorecard, shipcheck, catalog loader, FastAPI dashboard, and Typer CLI
 
-### Quality work landed in 0.1.2 (out of band)
+## v0.2.x — Agent-Native Polish ✓
 
-- Smarter spec naming: drops `OpenAPI`/`v3`/`REST` noise so titles like
-  "Swagger Petstore - OpenAPI 3.0" become `petstore`, not the
-  unwieldy `swagger-petstore-openapi-3-0`.
-- Relative `servers:` URLs in OpenAPI specs are resolved against the
-  source URL when fetched over HTTP, fixing broken `BASE_URL` for
-  petstore-shaped specs.
-- Generated client: `Accept: application/json`, `User-Agent`, redacted
-  request logging via `--debug`/`<NAME>_DEBUG`, clear errors when
-  `base_url` is unset.
-- Generated CLI: `--debug`; `--json/--no-json` removed (redundant with
-  `--pretty`); flag-collision auto-rename for shared path/body names.
-- Runtime tests: generated CLIs are now exercised end-to-end against
-  `httpx.MockTransport`, not just parsed.
+- [x] `--select`, `--compact`, `--quiet`, and `--dry-run`
+- [x] Typed exit codes: `3` not found, `4` auth, `5` API, `7` rate limit, `10` local config
+- [x] `doctor` and `auth-doctor` with optional live auth probe
+- [x] Tag-grouped command tree: `<api>-dt-cli pet add-pet`
+- [x] `--agent`, `--format json|jsonl|csv|plain|pretty`, `--no-color`
+- [x] `agent-context` and `which <keyword>` for agent introspection
+- [x] Saved profiles plus `--profile NAME`
+- [x] `--rate-limit` and `--timeout`
+- [x] Catalog expansion to 17 built-in recipes
+- [x] Dashboard workbench with source press panel, catalog filters, scorecard panel, and JSON APIs
+- [x] Generated README polish and version sync checks
 
+## v0.3.0 — Discovery Expansion ✓
 
-## v0.2.0 — Polish (in progress)
+- [x] GraphQL promoted to a first-class discoverer through introspection
+- [x] GraphQL operations normalized into the same `APISpec` model as OpenAPI/HAR
+- [x] Plugin autoload includes GraphQL by default
 
-### Landed in 0.2.0 (merged 2026-05-18)
+Still open for future sniffing work:
 
-- [x] **Agent-native CLI controls** — `--select`, `--compact`, `--quiet`, `--dry-run`
-  added as global options to every generated CLI
-- [x] **Typed exit codes** — `3` (404), `4` (401/403), `5` (other API error),
-  `7` (429), `10` (local config error) on every generated command
-- [x] **`doctor` command** — reports base URL validity, auth env var presence
-  with redacted fingerprints, and cache location; no write calls made
-- [x] **Dashboard upgrade** — minimal page replaced with a full workbench:
-  status rail, source press panel, catalog table with filters, result/scorecard
-  panel, recent-run display, and `/api/catalog` JSON endpoint
-- [x] **README polish** — generated READMEs now use clean Markdown tables,
-  agent usage examples, and separate lines per auth var / command bullet
-- [x] **Version sync** — `ducktap.__version__` is now asserted to match
-  `pyproject.toml` in CI; `mix_stderr` Click compatibility fixed
-- [x] Scorecard CI mode (`ducktap scorecard --fail-under N`) — landed 0.1.2
+- [ ] Crowd-sniff community CLIs/MCP servers before generating a new one
+- [ ] Smart action recording for browser sniffing
+- [ ] mitmproxy-backed sniffing as a Chromium-free alternative
+- [ ] Rate-limit-aware request inference during sniffing
 
-### Landed in 0.2.1 (this branch)
+## v0.4.0 — Local Data Layer ✓
 
-- [x] **Tag-grouped command tree** in generated CLIs — operations with tags
-  are organized under their first tag (e.g. `petstore-dt-cli pet add-pet`),
-  matching Printing Press's `<api>-pp-cli <resource> <verb>` muscle memory.
-- [x] **`--agent` mega-flag** on every generated CLI — toggles `--json`,
-  `--compact`, and `--no-color` at once for one-flag agent invocation.
-- [x] **Multi-format output** — `--format {json|jsonl|csv|plain|pretty}`
-  on every generated CLI, alongside the original `--json/--pretty` toggle.
-- [x] **`agent-context` command** — generated CLIs emit structured JSON
-  describing every command, group, global flag, and exit code so an agent
-  can self-introspect without parsing `--help`.
-- [x] **`which <keyword>` command** — search the operation tree by
-  substring across operation ids, paths, and summaries.
-- [x] **Saved profiles** — `profile save / list / show` subcommands and a
-  global `--profile NAME` to load flag presets from
-  `~/.ducktap/<api>/profiles/<name>.json`.
-- [x] **`--rate-limit` and `--timeout`** as global flags, plumbed through
-  the generated HTTP client (token-bucket throttle + per-request timeout).
-- [x] **Catalog expansion** — 3 → 17 entries (Sentry, Asana, Telegram,
-  Twilio, Plaid, HubSpot, Jira, Discord, ElevenLabs, Mercury,
-  LaunchDarkly, DigitalOcean, openrouteservice, Notion).
-- [x] **Doctor enriched** — also reports cache db existence/size, active
-  profile, available profile names, and the operation count + group list.
+- [x] Generated CLIs gained `--save NAME`
+- [x] Successful responses can be stored as rows in a local SQLite `records` table
+- [x] `data query "<select ...>"` runs read-only SQL over saved/cache data
+- [x] `data search <text>` searches stored JSON bodies
+- [x] Scorecard now includes a `local_data` dimension
 
-### Landed in 0.2.2
+Future data work:
 
-- [x] **`auth-doctor` command** on every generated CLI — env-var validation
-  with actionable hints sourced from the OpenAPI `description`, plus
-  optional `--probe` that makes a real GET request against the first
-  parameter-free endpoint and classifies the response (`auth_works`,
-  `auth_failed`, `auth_missing`, `rate_limited`, `inconclusive`,
-  `network_error`). Exit codes match the global palette (4 auth, 7 rate
-  limit, 5 API error, 10 local config) so agents can branch on them
-  without parsing JSON.
-- [x] **`--agent --dry-run` is no longer compacted** — dry-run payloads
-  describe the *request* (method/path/url/query/headers/body), not the
-  response, so applying `--compact` to them collapsed the payload to a
-  single high-gravity key. `_emit(..., raw=True)` is now used for every
-  metadata view (dry-run, agent-context, doctor, profile management) so
-  the CLI's self-description stays complete regardless of `--agent`.
+- [ ] DuckDB backend option
+- [ ] FTS5 indexes and domain-specific tables
+- [ ] Declarative compound command macros such as `health`, `stale`, and `bottleneck`
 
-### Still to do in 0.2.x
+## v0.5.0 — Publish Workflow ✓
 
-- [ ] LLM-assisted **operation description rewrite** (`ducktap polish <name>`)
-- [ ] LLM-assisted **command renaming** for unwieldy operation IDs
-- [ ] Detect login flows during sniffing, emit accurate auth env-var docs
-- [ ] Generated CLIs gain `--watch` and `--save` for ad-hoc local data lakes
+- [x] `ducktap publish <name>` packages generated artifacts into a zip
+- [x] Publish manifest records artifacts, scorecard, shipcheck, dry-run state, and next steps
+- [x] Publish uses the saved APISpec manifest from `press`
 
+Future release work:
 
-## v0.3.0 — Sniffing v2
+- [ ] Live PyPI upload backend
+- [ ] GitHub release backend
+- [ ] Auto-generated GitHub Actions for generated CLIs
+- [ ] Public DuckTap Library registry for community-printed CLIs
 
-- [ ] **Crowd-sniff**: study existing community CLIs/MCP servers via web search
-- [ ] **GraphQL** promoted to first-class discoverer (introspection + persisted queries)
-- [ ] Smart action recording for sniff (record clicks/forms, replay headless)
-- [ ] mitmproxy-backed sniff (no headless Chromium needed) as an alternative
-- [ ] Rate-limit + retry-with-backoff aware request inference
+## v0.6.0 — Multi-Language Generators ✓
 
+- [x] TypeScript CLI scaffold with command manifest and npm metadata
+- [x] Go CLI scaffold with runnable `agent-context` command
+- [x] Rust CLI scaffold with Cargo metadata and command manifest
+- [x] `ducktap press` now defaults to all six built-in targets:
+  `python-cli`, `mcp-server`, `skill`, `typescript-cli`, `go-cli`, and `rust-cli`
+- [x] Dashboard target selector exposes all six outputs
 
-## v0.4.0 — Compound queries
-
-- [ ] **Compound command macros**: declarative recipes that chain multiple operations
-- [ ] Local "data lake" mode: persistent mirror, full-text search over JSON
-- [ ] DuckDB backend option as alternative to SQLite
-- [ ] Built-in `<api>-dt-cli query "SELECT …"` for SQL over the mirror
-
-
-## v0.5.0 — Publish
-
-- [ ] `ducktap publish <name>` → PyPI + GitHub in one command (`gh` + `twine`)
-- [ ] Auto-generated GitHub Actions for the generated CLIs (test + release)
-- [ ] DuckTap Library: a public registry of community-printed CLIs (separate repo)
-
-
-## v0.6.0 — Multi-language generators
-
-- [ ] TypeScript CLI generator (oclif)
-- [ ] Go CLI generator (cobra) — for users who want the Printing Press output shape
-- [ ] Rust CLI generator (clap) — single-binary distribution
-
-
-## Known gaps vs Printing Press
+## Known Gaps vs Printing Press
 
 | PP feature | DuckTap status |
 |---|---|
-| `--compact` / `--select` flags | ✅ landed v0.2.0 |
-| Typed exit codes | ✅ landed v0.2.0 |
-| `doctor` command | ✅ landed v0.2.0 |
-| 30+ catalog entries | 17 entries (v0.2.1) — more in v0.2.x |
-| Tag-grouped command tree | ✅ landed v0.2.1 |
-| `--agent` mega-flag | ✅ landed v0.2.1 |
-| `--format` jsonl/csv/plain | ✅ landed v0.2.1 |
-| Saved profiles | ✅ landed v0.2.1 |
-| `agent-context` introspection | ✅ landed v0.2.1 |
-| `which <keyword>` search | ✅ landed v0.2.1 |
-| `--rate-limit` and `--timeout` globals | ✅ landed v0.2.1 |
-| `auth-doctor` (env-var validation + live probe) | ✅ landed v0.2.2 |
-| `--agent --dry-run` preserves full metadata payload | ✅ landed v0.2.2 |
-| Domain-specific SQLite tables + FTS5 | key-value cache only (planned v0.4) |
-| Compound query commands (`stale`, `health`, `bottleneck`) | planned v0.4 |
-| 2-tier scorecard (domain correctness) | 1-tier structural only (planned v0.4) |
-| Live API smoke test | not yet planned |
-| `emboss` brand-stamp step | not planned |
-| `mcp-audit` | subsumed by scorecard `artifacts` dimension |
-| `tools-audit` | subsumed by `public_param_audit` (v0.2.x) |
-| `vision` (LLM screenshot reading) | planned v0.3 (sniffing v2) |
-| Compound use-case recipes | planned v0.4 |
+| `--compact` / `--select` flags | landed v0.2.0 |
+| Typed exit codes | landed v0.2.0 |
+| `doctor` / `auth-doctor` | landed v0.2.2 |
+| Tag-grouped command tree | landed v0.2.1 |
+| `--agent`, `--format`, profiles, `agent-context`, `which` | landed v0.2.1 |
+| `--rate-limit` and `--timeout` globals | landed v0.2.1 |
+| GraphQL discovery | landed v0.6.0 |
+| Local data lake / query / search | landed v0.6.0 |
+| Publish command | dry-run packaging landed v0.6.0; live backends planned |
+| Multi-language output | TS/Go/Rust scaffolds landed v0.6.0 |
+| 30+ catalog entries | 17 entries; catalog growth remains ongoing |
+| Domain-specific SQLite tables + FTS5 | planned after v0.6 |
+| Compound query recipes | planned after v0.6 |
+| Live API smoke test | planned after v0.6 |
+| LLM polish / command renaming | planned after v0.6 |
+| Vision screenshot reading | planned for sniffing v2 |

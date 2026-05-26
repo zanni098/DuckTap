@@ -152,7 +152,10 @@ def _coerce(v: Any) -> Any:
 def _get_client(ctx: click.Context) -> Client:
     if "client" not in ctx.obj:
         from .mirror import Mirror
-        mirror = Mirror(ttl_seconds=ctx.obj.get("cache_ttl", 300)) if ctx.obj.get("cache") else None
+        mirror = (
+            Mirror(ttl_seconds=ctx.obj.get("cache_ttl", 300))
+            if ctx.obj.get("cache") or ctx.obj.get("save") else None
+        )
         timeout = ctx.obj.get("timeout") or None
         ctx.obj["client"] = Client(
             mirror=mirror,
@@ -431,6 +434,35 @@ def register(cli: click.Group) -> None:
         if not matches:
             ctx.exit(3)
 
+    data_group = click.Group(name="data",
+                             help="Query and search locally saved response records.")
+    cli.add_command(data_group)
+
+    @data_group.command("query")
+    @click.argument("sql")
+    @click.pass_context
+    def data_query(ctx: click.Context, sql: str) -> None:
+        client = _get_client(ctx)
+        if client.mirror is None:
+            click.echo(json.dumps({"error": "local data lake is disabled"}), err=True)
+            ctx.exit(10)
+        try:
+            _emit(ctx, client.mirror.query(sql), raw=True)
+        except Exception as exc:
+            click.echo(json.dumps({"error": str(exc)}), err=True)
+            ctx.exit(10)
+
+    @data_group.command("search")
+    @click.argument("text")
+    @click.option("--limit", type=int, default=20, show_default=True)
+    @click.pass_context
+    def data_search(ctx: click.Context, text: str, limit: int) -> None:
+        client = _get_client(ctx)
+        if client.mirror is None:
+            click.echo(json.dumps({"error": "local data lake is disabled"}), err=True)
+            ctx.exit(10)
+        _emit(ctx, client.mirror.search(text, limit=limit), raw=True)
+
     profile_group = click.Group(name="profile",
                                 help="Manage saved flag presets in "
                                      "~/.ducktap/{{ spec.name }}/profiles/.")
@@ -617,6 +649,10 @@ def register(cli: click.Group) -> None:
                 query=query, headers=headers, json_body=body,
                 use_cache=("{{ op.method }}" == "GET"),
             )
+            if ctx.obj.get("save") and client.mirror is not None:
+                client.mirror.save_records(
+                    ctx.obj["save"], "{{ op.method }}", path, client.base_url + path, data
+                )
         except APIError as e:
             click.echo(json.dumps({"error": str(e), "status": e.status, "body": e.body},
                                   indent=2, default=str), err=True)
