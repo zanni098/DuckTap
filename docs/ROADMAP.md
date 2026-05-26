@@ -123,9 +123,9 @@ over) Printing Press.
 
 ## v0.5.0 -- Publish
 
-- [ ] `ducktap publish <name>` → PyPI + GitHub in one command (`gh` + `twine`)
-- [ ] Auto-generated GitHub Actions for the generated CLIs (test + release)
-- [ ] DuckTap Library: a public registry of community-printed CLIs (separate repo)
+- [x] `ducktap publish <name>` → PyPI + GitHub in one command (`gh` + `twine`)
+- [x] Auto-generated GitHub Actions for the generated CLIs (test + release)
+- [x] DuckTap Library: local registry of community-printed CLIs (`ducktap library list/search/add/remove`)
 
 ## v0.6.0 -- Multi-language generators
 
@@ -162,12 +162,12 @@ over) Printing Press.
 | FTS5 full-text search | ✅ landed v0.4.0 |
 | DuckDB mirror backend | ✅ landed v0.4.0 |
 | Top-level `query` command | ✅ landed v0.4.0 |
-| Domain-specific SQLite tables + FTS5 | key-value cache only (planned v0.4) |
-| Compound query commands (`stale`, `health`, `bottleneck`) | planned v0.4 |
-| 2-tier scorecard (domain correctness) | 1-tier structural only (planned v0.4) |
+| Domain-specific SQLite tables + FTS5 | key-value cache only (deferred) |
+| Compound query commands (`stale`, `health`, `bottleneck`) | not yet implemented (deferred) |
+| 2-tier scorecard (domain correctness) | 1-tier structural only (deferred) |
 | Live API smoke test | not yet planned |
 | `emboss` brand-stamp step | not planned |
 | `mcp-audit` | subsumed by scorecard `artifacts` dimension |
 | `tools-audit` | subsumed by `public_param_audit` (v0.2.x) |
-| `vision` (LLM screenshot reading) | planned v0.3 (sniffing v2) |
-| Compound use-case recipes | planned v0.4 |
+| `vision` (LLM screenshot reading) | not yet implemented (deferred) |
+| Compound use-case recipes | landed v0.4.0 |

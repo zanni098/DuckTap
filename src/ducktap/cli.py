@@ -15,8 +15,14 @@ from ducktap.catalog import get_entry, list_entries
 from ducktap.core import plugins
 from ducktap.core.pipeline import discover, press
 from ducktap.crowd_sniff import crowd_sniff
+from ducktap.library import LibraryEntry
+from ducktap.library import add as library_add
+from ducktap.library import list_entries as library_list
+from ducktap.library import remove as library_remove
+from ducktap.library import search as library_search
 from ducktap.macros import Macro, list_macros, run_macro
 from ducktap.polish import polish, rename
+from ducktap.publish import publish as publish_cli
 from ducktap.verify.scorecard import score
 from ducktap.verify.shipcheck import shipcheck
 
@@ -275,6 +281,115 @@ def crowd_sniff_cmd(
             table.add_row(s['title'], s['url'])
         console.print(table)
     console.print(result['summary'])
+
+
+@app.command()
+def publish_cmd(
+    name: str = typer.Argument(..., help="CLI slug, e.g. petstore"),
+    out_dir: Path = typer.Option(Path("./out"), "--out-dir", "-o"),
+    github: bool = typer.Option(True, "--github/--no-github"),
+    pypi: bool = typer.Option(True, "--pypi/--no-pypi"),
+    dry_run: bool = typer.Option(False, "--dry-run"),
+    private: bool = typer.Option(False, "--private"),
+    skip_shipcheck: bool = typer.Option(False, "--skip-shipcheck"),
+) -> None:
+    """Publish a generated CLI to GitHub and PyPI."""
+    result = publish_cli(
+        name=name,
+        out_dir=str(out_dir),
+        github=github,
+        pypi=pypi,
+        dry_run=dry_run,
+        private=private,
+        skip_shipcheck=skip_shipcheck,
+    )
+    for step in result.steps:
+        colour = "green" if step.ok else "red"
+        status = "OK" if step.ok else "FAIL"
+        console.print(f"  [{colour}]{step.name}[/] {status}")
+        if step.stderr:
+            console.print(f"    [dim]{step.stderr[:200]}[/]")
+    if result.success:
+        console.print(f"[bold green]{result.message}[/]")
+    else:
+        console.print(f"[bold red]{result.message}[/]")
+        raise typer.Exit(1)
+
+
+library_app = typer.Typer(help="Local registry of printed CLIs.")
+app.add_typer(library_app, name="library")
+
+
+@library_app.command("list")
+def library_list_cmd() -> None:
+    """List registered CLIs in the local DuckTap Library."""
+    entries = library_list()
+    if not entries:
+        console.print("[yellow]Library is empty. Use 'ducktap library add' to register a CLI.[/]")
+        return
+    table = Table(title="DuckTap Library")
+    table.add_column("name")
+    table.add_column("version")
+    table.add_column("description")
+    table.add_column("tags")
+    for e in entries:
+        table.add_row(e.name, e.version, e.description[:40], ", ".join(e.tags))
+    console.print(table)
+
+
+@library_app.command("search")
+def library_search_cmd(
+    query: str = typer.Argument(..., help="Keyword to search")
+) -> None:
+    """Search the local library by name, description, or tags."""
+    entries = library_search(query)
+    if not entries:
+        console.print(f"[yellow]No results for '{query}'[/]")
+        return
+    table = Table(title=f"Library search: {query}")
+    table.add_column("name")
+    table.add_column("version")
+    table.add_column("description")
+    for e in entries:
+        table.add_row(e.name, e.version, e.description[:50])
+    console.print(table)
+
+
+@library_app.command("add")
+def library_add_cmd(
+    name: str = typer.Argument(..., help="CLI name"),
+    version: str = typer.Argument(..., help="Version string"),
+    description: str = typer.Option("", "--description", "-d"),
+    source_url: str = typer.Option("", "--source-url"),
+    pypi_url: str = typer.Option("", "--pypi-url"),
+    github_url: str = typer.Option("", "--github-url"),
+    tags: str = typer.Option("", "--tags", help="Comma-separated tags"),
+) -> None:
+    """Register a CLI in the local DuckTap Library."""
+    import datetime
+    entry = LibraryEntry(
+        name=name,
+        version=version,
+        description=description,
+        source_url=source_url,
+        pypi_url=pypi_url,
+        github_url=github_url,
+        tags=[t.strip() for t in tags.split(",") if t.strip()],
+        generated_at=datetime.datetime.now(datetime.UTC).isoformat(),
+    )
+    library_add(entry)
+    console.print(f"[green]Added[/] {name} v{version} to DuckTap Library")
+
+
+@library_app.command("remove")
+def library_remove_cmd(
+    name: str = typer.Argument(..., help="CLI name to remove")
+) -> None:
+    """Remove a CLI from the local DuckTap Library."""
+    if library_remove(name):
+        console.print(f"[green]Removed[/] {name} from DuckTap Library")
+    else:
+        console.print(f"[yellow]{name} was not in the library[/]")
 
 
 macro_app = typer.Typer(help="Run and manage compound command macros.")

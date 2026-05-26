@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.5.0 -- 2026-05-26
+
+Publish to PyPI/GitHub + auto-generated CI + DuckTap Library.
+
+### Added
+
+- `ducktap publish {name}` (`src/ducktap/publish.py`)
+  -- one-command publish workflow that runs shipcheck, commits code,
+  creates/pushes a GitHub repo via `gh`, builds a wheel, and uploads
+  to PyPI via `twine`. Supports `--dry-run`, `--private`, and
+  `--skip-shipcheck`.
+- Auto-generated GitHub Actions (`generator/templates/cli/.github/workflows/test_and_release.yml.j2`)
+  -- every generated CLI now includes a CI workflow that runs pytest
+  on push/PR and publishes to PyPI on release creation.
+- DuckTap Library (`src/ducktap/library.py`)
+  -- local JSON registry of printed CLIs. New `ducktap library`
+  subcommands: `list`, `search`, `add`, `remove`.
+
+### Changed
+
+- `ROADMAP.md` "Known gaps" table updated: compound use-case recipes
+  marked landed v0.4.0; deferred items now accurately labelled.
+
 ## 0.4.0 -- 2026-05-26
 
 Compound queries + FTS5 search + DuckDB backend + macro recipes.

@@ -121,6 +121,7 @@ class PythonCLIGenerator:
             ("cli/README.md.j2", root / "README.md"),
             ("cli/.gitignore.j2", root / ".gitignore"),
             ("cli/test_smoke.py.j2", root / "tests" / "test_smoke.py"),
+            ("cli/.github/workflows/test_and_release.yml.j2", root / ".github" / "workflows" / "test_and_release.yml"),
         ]
         for tpl, dst in files:
             text = env.get_template(tpl).render(**ctx)
