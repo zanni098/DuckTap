@@ -140,14 +140,13 @@ over) Printing Press.
 - [x] `emboss` brand-stamp step (`ducktap emboss`)
 - [x] `vision` LLM screenshot reading (`ducktap vision`)
 
-## Known gaps vs Printing Press
+## Known gaps vs Printing Press (updated v0.6.0)
 
 | PP feature | DuckTap status |
 |---|---|
 | `--compact` / `--select` flags | ✅ landed v0.2.0 |
 | Typed exit codes | ✅ landed v0.2.0 |
 | `doctor` command | ✅ landed v0.2.0 |
-| 30+ catalog entries | 17 entries (v0.2.1) -- more in v0.2.x |
 | Tag-grouped command tree | ✅ landed v0.2.1 |
 | `--agent` mega-flag | ✅ landed v0.2.1 |
 | `--format` jsonl/csv/plain | ✅ landed v0.2.1 |
@@ -156,11 +155,7 @@ over) Printing Press.
 | `which <keyword>` search | ✅ landed v0.2.1 |
 | `--rate-limit` and `--timeout` globals | ✅ landed v0.2.1 |
 | `auth-doctor` (env-var validation + live probe) | ✅ landed v0.2.2 |
-| `--agent --dry-run` preserves full metadata payload | ✅ landed v0.2.2 |
 | LLM-assisted polish + rename | ✅ landed v0.2.x |
-| Auth flow detection in sniff | ✅ landed v0.2.x |
-| Generated CLI data lake (`--watch`/`--save`) | ✅ landed v0.2.x |
-| Crowd-sniff research | ✅ landed v0.3.0 |
 | GraphQL first-class discoverer | ✅ landed v0.3.0 |
 | Smart action recording + replay | ✅ landed v0.3.0 |
 | mitmproxy-backed sniff | ✅ landed v0.3.0 |
@@ -169,12 +164,261 @@ over) Printing Press.
 | FTS5 full-text search | ✅ landed v0.4.0 |
 | DuckDB mirror backend | ✅ landed v0.4.0 |
 | Top-level `query` command | ✅ landed v0.4.0 |
-| Domain-specific SQLite tables + FTS5 | key-value cache only (deferred) |
-| Compound query commands (`stale`, `health`, `bottleneck`) | not yet implemented (deferred) |
-| 2-tier scorecard (domain correctness) | 1-tier structural only (deferred) |
-| Live API smoke test | not yet planned |
-| `emboss` brand-stamp step | not planned |
-| `mcp-audit` | subsumed by scorecard `artifacts` dimension |
-| `tools-audit` | subsumed by `public_param_audit` (v0.2.x) |
-| `vision` (LLM screenshot reading) | not yet implemented (deferred) |
-| Compound use-case recipes | landed v0.4.0 |
+| `ducktap publish` → PyPI + GitHub | ✅ landed v0.5.0 |
+| Auto-generated GitHub Actions | ✅ landed v0.5.0 |
+| Library registry | ✅ landed v0.5.0 |
+| Multi-language generators (Go/TS/Rust) | ✅ landed v0.6.0 |
+| Compound query commands (`stale`, `health`, `bottleneck`) | ✅ landed v0.6.0 |
+| 2-tier scorecard (domain correctness dimension) | ✅ landed v0.6.0 (structural; deep pipeline verification → v0.8) |
+| Live API smoke test | ✅ landed v0.6.0 |
+| `emboss` brand-stamp | ✅ landed v0.6.0 |
+| `vision` LLM screenshot reading | ✅ landed v0.6.0 |
+| 30+ catalog entries | ✅ landed v0.6.0 (30 entries) |
+| Non-Obvious Insight (NOI) generation | ⏳ v0.7 |
+| Ecosystem absorb gate | ⏳ v0.7 |
+| Domain archetypes (5 archetypes, typed commands) | ⏳ v0.7 |
+| True domain-specific SQLite (typed per-resource tables) | ⏳ v0.7 |
+| Proof of behavior (4 mechanical proofs) | ⏳ v0.8 |
+| Rung 5 behavioral insights (`similar`, `trends`, `forecast`) | ⏳ v0.8 |
+| Cursor-based incremental sync | ⏳ v0.8 |
+| Auto-JSON when piped (no `--json` needed) | ⏳ v0.8 |
+| Published real CLIs users can install | ⏳ v0.9 |
+| Homebrew formula + single-binary distribution | ⏳ v0.9 |
+| `ducktap reprint` | ⏳ v0.9 |
+| `ducktap amend` (session transcript mining) | ⏳ v0.9 |
+| Global `auth-doctor` (across all installed CLIs) | ⏳ v0.9 |
+| Agent delegation mode (Codex equivalent) | ⏳ v0.9 |
+| printingpress.dev equivalent | ⏳ v1.0 |
+| Plugin marketplace | ⏳ v1.0 |
+
+---
+
+## v0.7.0 — The Creative Layer
+
+The single most important gap between DuckTap and Printing Press is not features — it is
+creative depth. PP generates CLIs *around an insight*. DuckTap generates CLIs *from a spec*.
+v0.7 closes that conceptual gap and rewires the press pipeline to front-load research
+the way PP's Phase 0–1.5 does.
+
+### Non-Obvious Insight (NOI)
+
+- [ ] `ducktap insight <api>` — standalone command that produces a one-sentence NOI for an API:
+  `"[API] isn't just [obvious thing]. It's [non-obvious thing]. Every [data point] is a signal about [hidden truth]."`
+- [ ] NOI is generated in Phase 0 of `ducktap press` and written to `<out>/<name>/.ducktap.json` provenance manifest
+- [ ] `ducktap press` blocks (with a warning, not a hard fail) if the LLM cannot generate a convincing NOI, prompting the user to supply one with `--insight "..."`
+- [ ] NOI is embedded in the generated CLI's README and `agent-context` output so agents understand the CLI's purpose
+
+### Ecosystem Absorb Gate
+
+- [ ] Extends crowd-sniff into a generation gate. Before generating, `ducktap press` runs an absorb pass that catalogs every feature found in the top 5 community CLIs/MCPs for the target API into an **absorb manifest** (`<out>/<name>/research/absorb-manifest.json`)
+- [ ] Absorb manifest is a structured list: `{feature, source_tool, source_url, priority}` with every feature the top competitor has classified as `must_match` or `transcend`
+- [ ] LLM suggests novel features missing from the entire ecosystem (stored as `novel_suggestions` in the manifest)
+- [ ] Generated CLI must match every `must_match` feature before `ducktap scorecard` can pass
+- [ ] `ducktap absorb <api>` — run the absorb gate standalone, emit the manifest without generating
+
+### Domain Archetypes
+
+Five archetypes auto-detected from the spec. Each archetype generates a typed data layer and the right workflow + insight commands.
+
+- [ ] **Archetype detector** (`src/ducktap/verify/archetype.py`) — classifies any APISpec into one of 5 archetypes based on resource names, field names, and HTTP patterns:
+  - `project_management` — issue/task/ticket resources, assignee, priority, state fields
+  - `communication` — message/channel/thread resources, threading fields, timestamps
+  - `payments` — charge/payment/invoice resources, amount, currency, status fields
+  - `infrastructure` — server/deploy/instance resources, region, status fields
+  - `content` — document/page/block resources, content, version fields
+- [ ] Detected archetype is stored in `APISpec.archetype` and in `.ducktap.json`
+- [ ] Python CLI generator switches template context based on archetype, generating the right `sync`, `search`, `sql`, and workflow commands for each one
+- [ ] `ducktap press --archetype project_management` — manual override
+
+### True Domain-Specific SQLite Tables
+
+Replaces the generic `domain_entities` JSON-blob table with typed per-resource tables per archetype. This unlocks Rung 5 commands in v0.8.
+
+- [ ] `mirror.py.j2` gains archetype-aware table generation:
+  - `project_management` → `issues (id, title, status, assignee, priority, created_at, updated_at, body TEXT)`
+  - `communication` → `messages (id, channel_id, author_id, content TEXT, timestamp, thread_id)`
+  - `payments` → `charges (id, amount, currency, status, customer_id, created_at, description TEXT)`
+  - `infrastructure` → `resources (id, name, type, status, region, created_at, metadata TEXT)`
+  - `content` → `documents (id, title, content TEXT, author_id, updated_at, parent_id)`
+- [ ] Each archetype gets typed `UpsertX()` and `SearchX()` methods (not generic `save_record`)
+- [ ] FTS5 virtual table indexes the natural text column for each archetype (content, title, body, etc.)
+- [ ] DuckDB backend gets equivalent typed tables
+- [ ] `--since <ISO-date>` flag on `sync` for incremental updates (stores last cursor in `~/.ducktap/<api>/cursor.json`)
+
+### Provenance Manifest
+
+- [ ] Every `ducktap press` run writes `<out>/<name>/.ducktap.json` containing: NOI, archetype, absorb manifest summary, source URL, spec hash, ducktap version, generation timestamp, scorecard grade
+- [ ] `ducktap info <name>` reads and pretty-prints the manifest
+
+---
+
+## v0.8.0 — Verification & Depth
+
+v0.8 closes the verification gap (proof of behavior, golden harness) and pushes the
+generated CLI up to Rung 5 behavioral insights now that the typed data layer from v0.7
+makes them possible.
+
+### Proof of Behavior (4 Mechanical Proofs)
+
+- [ ] **Path Proof** — every URL in generated commands exists in the APISpec. Auto-removes commands with hallucinated paths and re-generates.
+- [ ] **Flag Proof** — every registered Click option is referenced in at least one command handler. Removes dead flags.
+- [ ] **Pipeline Proof** — every SQLite table written by `sync` is read by at least one of `search`, `query`, `sql`. Fails if `sync` writes to a table that nothing reads.
+- [ ] **Auth Proof** — auth header format in `client.py.j2` matches the spec's `auth_schemes[*].type`. `Bearer` vs `Basic` vs `ApiKey` mismatch is a hard fail.
+- [ ] `ducktap verify <name>` runs all four proofs and emits a structured JSON report
+- [ ] Proof failures trigger auto-remediation: remove dead code, re-run proof, max 3 iterations
+- [ ] Scorecard domain_correctness tier is rewired to use proof results instead of structural heuristics
+
+### Rung 5 — Behavioral Insight Commands
+
+Enabled by the typed tables from v0.7. Generated per archetype.
+
+- [ ] `similar` — find semantically duplicate records using FTS5 similarity ranking (all archetypes)
+- [ ] `trends` — plot a metric over time from the local mirror: cycle time (PM), message volume (comms), revenue (payments) — emits JSON suitable for sparkline rendering
+- [ ] `health` — composite score across multiple dimensions: staleness ratio, error rate in recent syncs, coverage of required fields (all archetypes)
+- [ ] `forecast` — linear regression on a time-series column, emits next-7-day projection (payments archetype: revenue; PM archetype: issue close rate)
+- [ ] `patterns` — surface recurring sequences: most active times, most common state transitions, top contributors (comms + PM archetypes)
+- [ ] All Rung 5 commands are gated on the typed data layer existing — they fail gracefully if the mirror is empty or the archetype is `unknown`
+
+### Cursor-Based Incremental Sync
+
+- [ ] `sync` command in generated CLIs gains `--since <ISO-date>` and `--cursor` flags
+- [ ] Last sync cursor stored in `~/.ducktap/<api>/cursor.json` — subsequent syncs start from there
+- [ ] `--data-source auto` — pre-read refresh before serving local data if cursor is stale by more than `--max-age` seconds
+- [ ] `--data-source local` — bypass sync, use mirror only
+- [ ] `--data-source live` — bypass mirror, call API directly
+- [ ] Batch SQLite transactions on insert (1000 records per commit) for performance
+
+### Agent UX Parity
+
+Small gaps that matter at scale.
+
+- [ ] **Auto-JSON when piped** — detect `sys.stdout.isatty() == False` and switch to JSON output automatically, no `--json` flag needed
+- [ ] `--no-input` — disable all interactive prompts, fail fast instead
+- [ ] `--stdin` — read JSON body from stdin for POST/PUT commands (`echo '{"title":"x"}' | petstore-dt-cli pet create --stdin`)
+- [ ] `--yes` — auto-confirm destructive operations without prompting
+- [ ] **Bounded output messaging** — list commands append `"Showing N of M results. To narrow: add --limit, --select, or filter flags."` to every list response
+- [ ] **Actionable errors** — every `APIError` includes `hint`, `flag`, and `correct_usage` fields so agents self-correct in one retry
+
+### Golden Output Harness
+
+- [ ] `tests/golden/` directory with deterministic, offline test cases: `command.txt` (the command), `expected_stdout.json`, `expected_exit_code`
+- [ ] `scripts/golden.sh verify` — rebuilds CLI from petstore fixture, runs cases, diffs output
+- [ ] `scripts/golden.sh update` — regenerates expected files (requires explicit env var to prevent accidental overwrite)
+- [ ] Golden CI workflow runs separately from pytest to protect deterministic generation
+- [ ] `tests/fixtures/golden-api.yaml` — purpose-built spec fixture for golden tests
+
+---
+
+## v0.9.0 — Distribution & Ecosystem
+
+v0.9 closes the community gap: real published CLIs users can install, proper distribution,
+and the workflow commands that make DuckTap a live tool instead of a generator.
+
+### Published CLIs — DuckTap Library
+
+- [ ] `zanni098/ducktap-library` GitHub repository — organized by category, one directory per CLI
+- [ ] First 5 published CLIs shipped and installable via `pip install`:
+  - `github-dt-cli` (developer, official spec)
+  - `linear-dt-cli` (project management, archetype: project_management, compound commands)
+  - `stripe-dt-cli` (payments, archetype: payments, reconcile + revenue commands)
+  - `slack-dt-cli` (communication, archetype: communication, channel-health + message-stats)
+  - `sentry-dt-cli` (infrastructure, archetype: infrastructure, health + trends)
+- [ ] Each published CLI ships: README with NOI + cookbook, `.ducktap.json` provenance manifest, GitHub Actions CI, smoke test results
+- [ ] `ducktap library install <name>` — `pip install` wrapper that fetches from ducktap-library
+
+### Distribution
+
+- [ ] **Single-binary build** via PyInstaller — `ducktap` ships as a standalone executable with no Python required, distributed via GitHub Releases
+- [ ] **Homebrew formula** — `brew install ducktap` (tap: `zanni098/tap`)
+- [ ] `scripts/install.sh` — one-liner curl installer that detects OS/arch and installs the right binary
+- [ ] `ducktap update` — self-update command that pulls the latest binary from GitHub Releases
+
+### `ducktap reprint`
+
+- [ ] `ducktap reprint <name>` — re-runs `press` on an existing CLI using the original source from `.ducktap.json`, applies polish, re-scores, preserves local customizations in a `--merge` mode
+- [ ] `--diff` flag shows what changed between the old and new generation before applying
+
+### `ducktap amend`
+
+- [ ] `ducktap amend [<name>]` — reads the current Claude Code / shell session transcript, identifies friction points (missing flags, hand-rolled API payloads, silent-null returns, repeated workarounds), scopes a patch with the user, applies it to the generated CLI, and opens a PR to the library
+- [ ] Two checkpoints: (1) scope confirmation, (2) PR draft review before push
+- [ ] Strips PII from transcript before including in PR description
+- [ ] Falls back to `--manual` mode with a prompted checklist if no transcript is available
+
+### Agent Delegation Mode
+
+- [ ] `ducktap press <api> --delegate codex` — offloads Phase 3 code generation (template rendering + fixture writing) to Codex CLI or any configured LLM agent
+- [ ] Claude / the configured primary LLM handles research, NOI, absorb gate, archetype detection, and review
+- [ ] The delegate handles writing Go/Python/TS/Rust code from scoped prompts
+- [ ] Falls back to local generation after 3 delegate failures with no user intervention
+- [ ] `--delegate` accepts any LiteLLM model string for non-Codex agents
+
+### Global Auth Doctor
+
+- [ ] `ducktap auth-doctor` (top-level, no CLI name required) — scans every installed `.ducktap.json` manifest in `~/.ducktap/*/` and reports which env vars are set, unset, or suspicious across all installed CLIs
+- [ ] Fingerprints show first 4 chars, never full token
+- [ ] `--json` output for agent consumption
+- [ ] Exit 0 always (diagnostic, not gating)
+
+### MCP Audit
+
+- [ ] `ducktap mcp-audit <name>` — inspects a generated MCP server against the source APISpec: checks tool names match operation IDs, parameter types match spec types, auth env vars are declared
+- [ ] Reports a coverage score: tools exposed / operations in spec
+- [ ] `--fix` flag auto-regenerates the MCP server if coverage < 80%
+
+---
+
+## v1.0.0 — Transcendence
+
+v1.0 is where DuckTap stops closing the gap and starts pulling ahead. The features
+below are either things PP cannot do (multi-LLM, 4 generators, mitmproxy, web UI) or
+things nobody has done yet (multi-agent pipeline, plugin marketplace, live event sync).
+
+### DuckTap Surpasses PP on Its Own Terms
+
+- [ ] **Domain archetype coverage expanded to 8** — add `analytics`, `identity`, `ecommerce` archetypes with their own typed tables and Rung 5 commands
+- [ ] **Absorb gate v2** — after absorbing, runs a diff against the generated CLI and flags any `must_match` feature that is missing from the generated code (not just from the spec)
+- [ ] **Proof of behavior v2** — adds a **Semantic Proof**: the NOI claim is verified against the generated compound commands (e.g. if NOI says "it's a team behavior observatory", at least one Rung 5 command must surface behavioral patterns)
+- [ ] **`health` composite score** published in `agent-context` output — a single 0–100 number summarising freshness, error rate, coverage, and sync lag so agents can decide whether to `sync` before querying
+
+### Multi-Agent Press Pipeline
+
+- [ ] `ducktap press` optionally splits into two agents: a **Research Agent** (NOI, absorb gate, archetype, data model design) and a **Generation Agent** (code writing, template rendering, proof verification)
+- [ ] Agents communicate via a structured JSON pipeline contract stored in `<out>/<name>/pipeline/`
+- [ ] Any LiteLLM model can be assigned to either role: `--research-model claude-opus-4 --generation-model kimi-k2`
+- [ ] Pipeline contract is resumable — interrupted runs can restart from the last completed phase
+
+### Plugin Marketplace
+
+- [ ] `ducktap plugins search <query>` — searches PyPI for packages tagged `ducktap-plugin`
+- [ ] `ducktap plugins install <package>` — `pip install` + auto-registration
+- [ ] Plugin contract v2: plugins can now register **archetype detectors**, **Rung 5 command generators**, and **proof checkers** (not just discoverers and generators)
+- [ ] `ducktap plugins publish` — scaffolds a plugin package with the right entry points, README template, and CI workflow
+
+### Web UI 2.0
+
+- [ ] Live archetype preview — after discovery, the dashboard shows which archetype was detected and lets the user override before generation
+- [ ] Absorb manifest viewer — browse the absorb manifest, mark features as `skip` or `must_match` before generation
+- [ ] NOI editor — display the generated NOI, allow user to edit before pressing
+- [ ] Live scorecard — WebSocket stream of proof-of-behavior results as they run
+- [ ] Library browser — browse `ducktap-library` entries, install with one click
+
+### GraphQL Subscriptions + WebSocket Discovery
+
+- [ ] GraphQL discoverer gains Subscription type support — generates `watch-<event>` commands in the CLI
+- [ ] mitmproxy sniff captures WebSocket frames and infers event schemas
+- [ ] Generated CLI gains `stream <event>` command for APIs with SSE or WebSocket push
+
+### ducktap.dev Website
+
+- [ ] Public website listing every CLI in `ducktap-library` with: NOI, archetype, scorecard grade, install command, generated README
+- [ ] Search by API name, category, archetype
+- [ ] "Print your own" CTA pointing to the repo
+
+### Quality Bar for 1.0
+
+- [ ] 95%+ test coverage across all source modules
+- [ ] All 5 published CLIs in ducktap-library have Grade A scorecards and passing proof-of-behavior
+- [ ] E2E test suite runs against 3 live APIs (petstore + 2 catalog entries) in CI
+- [ ] Zero known proof-of-behavior failures in published CLIs
+- [ ] `ducktap --version` matches `pyproject.toml` and the latest GitHub Release tag in all three places
