@@ -191,6 +191,22 @@ over) Printing Press.
 | printingpress.dev equivalent | ⏳ v1.0 |
 | Plugin marketplace | ⏳ v1.0 |
 
+### DuckTap-only advantages (not in Printing Press)
+
+| Feature | Status |
+|---|---|
+| Multi-LLM support (LiteLLM) | landed v0.1.0 |
+| Browser sniffing (Playwright + mitmproxy) | landed v0.3.0 |
+| Web dashboard (ducktap ui) | landed v0.2.0 |
+| --agent mega-flag + agent-context introspection | landed v0.2.1 |
+| auth-doctor with live probe | landed v0.2.2 |
+| Compound command macros (YAML recipes) | landed v0.4.0 |
+| FTS5 full-text search in generated CLI | landed v0.4.0 |
+| DuckDB mirror backend | landed v0.4.0 |
+| Multi-language generators (Python/Go/TS/Rust) | landed v0.6.0 |
+| Vision screenshot reading | landed v0.6.0 |
+| ducktap publish one-command PyPI + GitHub | landed v0.5.0 |
+
 ---
 
 ## v0.7.0 — The Creative Layer
@@ -218,9 +234,9 @@ the way PP's Phase 0–1.5 does.
 
 ### Domain Archetypes
 
-Five archetypes auto-detected from the spec. Each archetype generates a typed data layer and the right workflow + insight commands.
+Five initial archetypes auto-detected from the spec (expandable to 8+ in v1.0). Each archetype generates a typed data layer and the right workflow + insight commands.
 
-- [ ] **Archetype detector** (`src/ducktap/verify/archetype.py`) — classifies any APISpec into one of 5 archetypes based on resource names, field names, and HTTP patterns:
+- [ ] **Archetype detector** (`src/ducktap/verify/archetype.py`) — classifies any APISpec into one of 5 initial archetypes based on resource names, field names, and HTTP patterns:
   - `project_management` — issue/task/ticket resources, assignee, priority, state fields
   - `communication` — message/channel/thread resources, threading fields, timestamps
   - `payments` — charge/payment/invoice resources, amount, currency, status fields
@@ -274,7 +290,7 @@ Enabled by the typed tables from v0.7. Generated per archetype.
 
 - [ ] `similar` — find semantically duplicate records using FTS5 similarity ranking (all archetypes)
 - [ ] `trends` — plot a metric over time from the local mirror: cycle time (PM), message volume (comms), revenue (payments) — emits JSON suitable for sparkline rendering
-- [ ] `health` — composite score across multiple dimensions: staleness ratio, error rate in recent syncs, coverage of required fields (all archetypes)
+- [ ] `diagnose` — composite score across multiple dimensions: staleness ratio, error rate in recent syncs, coverage of required fields (all archetypes). Distinct from the v0.6 `health` command (data-lake metadata); this is a behavioral health score.
 - [ ] `forecast` — linear regression on a time-series column, emits next-7-day projection (payments archetype: revenue; PM archetype: issue close rate)
 - [ ] `patterns` — surface recurring sequences: most active times, most common state transitions, top contributors (comms + PM archetypes)
 - [ ] All Rung 5 commands are gated on the typed data layer existing — they fail gracefully if the mirror is empty or the archetype is `unknown`
@@ -301,7 +317,7 @@ Small gaps that matter at scale.
 
 ### Golden Output Harness
 
-- [ ] `tests/golden/` directory with deterministic, offline test cases: `command.txt` (the command), `expected_stdout.json`, `expected_exit_code`
+- [ ] `tests/golden/` directory with deterministic, offline test cases: `command.txt` (the command), `expected_stdout.json` (structure validated, not exact text — templates evolve), `expected_exit_code`
 - [ ] `scripts/golden.sh verify` — rebuilds CLI from petstore fixture, runs cases, diffs output
 - [ ] `scripts/golden.sh update` — regenerates expected files (requires explicit env var to prevent accidental overwrite)
 - [ ] Golden CI workflow runs separately from pytest to protect deterministic generation
@@ -342,16 +358,16 @@ and the workflow commands that make DuckTap a live tool instead of a generator.
 
 - [ ] `ducktap amend [<name>]` — reads the current Claude Code / shell session transcript, identifies friction points (missing flags, hand-rolled API payloads, silent-null returns, repeated workarounds), scopes a patch with the user, applies it to the generated CLI, and opens a PR to the library
 - [ ] Two checkpoints: (1) scope confirmation, (2) PR draft review before push
-- [ ] Strips PII from transcript before including in PR description
+- [ ] Strips PII from transcript before including in PR description. Scrub rules: redact Authorization / api_key / token / password values, replace hostnames with example.com, replace local file paths with REDACTED, drop any line matching export .*SECRET
 - [ ] Falls back to `--manual` mode with a prompted checklist if no transcript is available
 
 ### Agent Delegation Mode
 
-- [ ] `ducktap press <api> --delegate codex` — offloads Phase 3 code generation (template rendering + fixture writing) to Codex CLI or any configured LLM agent
+- [ ] `ducktap press <api> --delegate codex` — offloads Phase 3 code generation (template rendering + fixture writing) to a code-generation agent (Codex CLI, Claude Code, or any tool-loop agent)
 - [ ] Claude / the configured primary LLM handles research, NOI, absorb gate, archetype detection, and review
-- [ ] The delegate handles writing Go/Python/TS/Rust code from scoped prompts
+- [ ] The delegate receives scoped prompts (archetype, operations, auth schemes) and returns raw code files; DuckTap validates the returned code via proof-of-behavior before accepting it
 - [ ] Falls back to local generation after 3 delegate failures with no user intervention
-- [ ] `--delegate` accepts any LiteLLM model string for non-Codex agents
+- [ ] `--delegate-model` accepts any LiteLLM model string for single-shot code generation (no tool loop) as a lightweight alternative to full agent delegation
 
 ### Global Auth Doctor
 
@@ -421,4 +437,5 @@ things nobody has done yet (multi-agent pipeline, plugin marketplace, live event
 - [ ] All 5 published CLIs in ducktap-library have Grade A scorecards and passing proof-of-behavior
 - [ ] E2E test suite runs against 3 live APIs (petstore + 2 catalog entries) in CI
 - [ ] Zero known proof-of-behavior failures in published CLIs
+- [ ] No generated CLI crashes on `--help` or `--agent-context` (smoke-tested in CI)
 - [ ] `ducktap --version` matches `pyproject.toml` and the latest GitHub Release tag in all three places
