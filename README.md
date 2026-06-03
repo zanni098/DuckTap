@@ -1,9 +1,10 @@
 # DuckTap
 
-> **Tape any API to your agent in one command.**
-> DuckTap is a CLI factory for AI agents. Point it at an OpenAPI spec, a HAR
-> file, or a plain website, and it *prints* a Python CLI, an MCP server, and a
-> Claude/Cursor/Codex skill -- wired up, cached, scored, ready to ship.
+> **Turn any OpenAPI spec into a working MCP server in one command — deterministically.**
+>
+> No LLM. No API key. No Claude Code. `ducktap press ./openapi.yaml` reads the spec and
+> *prints* an MCP server — plus a Python CLI and an agent skill — that any agent can use.
+> Same spec → same output, every time. Runs in CI.
 
 **Website:** [ducktap-website.vercel.app](https://ducktap-website.vercel.app)
 
@@ -13,15 +14,12 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](pyproject.toml)
 
-DuckTap is inspired by [Printing Press](https://printingpress.dev) by
-[@mvanhorn](https://github.com/mvanhorn) -- same north star (*muscle memory for
-agents*) -- rebuilt in Python with multi-LLM support, a web dashboard,
-Playwright-powered browser sniffing, and a real plugin system.
-
-![DuckTap local dashboard](docs/img/ducktap-ui.png?v=2)
+<!-- Render the demo GIF with `vhs demo/demo.tape` (see demo/DEMO.md), commit demo/ducktap.gif,
+     then uncomment the line below so the hero leads with the 30-second demo. -->
+<!-- ![DuckTap: OpenAPI spec → MCP server in one command](demo/ducktap.gif) -->
 
 ```text
-$ ducktap press tests/fixtures/petstore.yaml --out ./out --name petstore
+$ ducktap press ./openapi.yaml --name petstore
 Pressed petstore (19 operations) -> out
   python-cli: 10 files
   mcp-server: 5 files
@@ -35,6 +33,16 @@ Scorecard: 92/100 (A)
   - artifacts:     100 -- 3/3 expected artifact dirs present
   - naming:        100 -- 19/19 unique operation ids
 ```
+
+**Why deterministic?** DuckTap parses the spec and emits code directly — no model in the
+loop. That means no API key, no per-run token cost, reproducible output you can diff and
+review, and generation that runs in CI.
+
+Inspired by [Printing Press](https://printingpress.dev) by
+[@mvanhorn](https://github.com/mvanhorn) — same north star (*muscle memory for agents*).
+Printing Press is the prompt-driven, Claude-Code-native take; DuckTap is the spec-first,
+deterministic one. Here's an honest [DuckTap vs Printing Press](docs/ducktap-vs-printing-press.md)
+on when to use which.
 
 ## Why a CLI factory?
 
