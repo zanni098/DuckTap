@@ -14,9 +14,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](pyproject.toml)
 
-<!-- Render the demo GIF with `vhs demo/demo.tape` (see demo/DEMO.md), commit demo/ducktap.gif,
-     then uncomment the line below so the hero leads with the 30-second demo. -->
-<!-- ![DuckTap: OpenAPI spec → MCP server in one command](demo/ducktap.gif) -->
+![DuckTap: OpenAPI spec → MCP server in one command](demo/ducktap.gif)
 
 ```text
 $ ducktap press ./openapi.yaml --name petstore
