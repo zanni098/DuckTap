@@ -1,0 +1,13 @@
+Pressed petstore (19 operations) -> demo\_render\out2
+  python-cli: 11 files
+  mcp-server: 5 files
+  skill: 3 files
+
+Scorecard: 87/100 (B)
+  - coverage: 95 -- 19 operations exposed
+  - documentation: 100 -- 19/19 operations have docs
+  - auth: 100 -- 2 auth scheme(s)
+  - typed_params: 54 -- 29/53 params typed/enum
+  - artifacts: 100 -- 3/3 expected artifact dirs present
+  - naming: 100 -- 19/19 unique operation ids
+  - domain_correctness: 72 -- restful=66, responses=100, base_url=50

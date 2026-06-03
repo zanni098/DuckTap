@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  html, body { margin: 0; background: #0d1117; }
+  #term {
+    width: 920px;
+    box-sizing: border-box;
+    margin: 0;
+    background: #161b22;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,.5);
+    font-family: "JetBrains Mono","Cascadia Code","DejaVu Sans Mono",Consolas,monospace;
+  }
+  #bar { height: 34px; background: #21262d; display: flex; align-items: center; padding: 0 12px; gap: 8px; }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .r { background: #ff5f56; } .y { background: #ffbd2e; } .g { background: #27c93f; }
+  #title { color: #8b949e; font-size: 13px; margin-left: 10px; }
+  #body { padding: 18px 20px 22px; font-size: 16px; line-height: 1.5; height: 430px; overflow: hidden; }
+  .line { white-space: pre-wrap; }
+  .cmd .prompt { color: #27c93f; font-weight: 700; }
+  .cmd { color: #e6edf3; }
+  .comment { color: #6e7681; }
+  .out { color: #c9d1d9; }
+  .good { color: #3fb950; }
+  .head { color: #58a6ff; font-weight: 700; }
+  .cursor { display: inline-block; width: 9px; height: 18px; background: #3fb950; vertical-align: -3px; margin-left: 2px; }
+</style>
+</head>
+<body>
+<div id="term">
+  <div id="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span id="title">ducktap — demo</span></div>
+  <div id="body"></div>
+</div>
+<script src="session.js"></script>
+<script>
+// SESSION (from session.js) = [{t:'cmd|comment|out|good|head', s:'text'}...]
+// Build a frame plan: type out command lines char-by-char, reveal output line-by-line,
+// add hold frames at the end of the command and on the final scorecard.
+const S = window.SESSION || [];
+const body = document.getElementById('body');
+
+function classFor(t){ return t==='cmd' ? 'line cmd' : 'line '+t; }
+function renderLine(item, partial){
+  const div = document.createElement('div');
+  div.className = classFor(item.t);
+  let text = partial == null ? item.s : item.s.slice(0, partial);
+  if (item.t === 'cmd') {
+    div.innerHTML = '<span class="prompt">$ </span>' + escapeHtml(text);
+  } else {
+    div.textContent = text;
+  }
+  return div;
+}
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Precompute frames: each frame = list of {idx, partial?}
+const frames = [];
+const shown = [];
+for (let i = 0; i < S.length; i++){
+  const it = S[i];
+  if (it.t === 'cmd'){
+    // type it out
+    for (let c = 1; c <= it.s.length; c++){
+      frames.push(snapshot(shown, {idx:i, partial:c}));
+    }
+    shown.push(i);
+    frames.push(snapshot(shown, null));
+    frames.push(snapshot(shown, null)); // brief hold after pressing enter
+  } else {
+    shown.push(i);
+    frames.push(snapshot(shown, null));
+  }
+}
+// extra hold frames at the very end so the GIF lingers on the result
+for (let k=0;k<8;k++) frames.push(frames[frames.length-1]);
+
+function snapshot(shownIdx, partialItem){
+  return { shown: shownIdx.slice(), partial: partialItem };
+}
+
+function drawFrame(f){
+  body.innerHTML = '';
+  for (const idx of f.shown){
+    body.appendChild(renderLine(S[idx], null));
+  }
+  if (f.partial){
+    const div = renderLine(S[f.partial.idx], f.partial.partial);
+    const cur = document.createElement('span'); cur.className='cursor';
+    div.appendChild(cur);
+    body.appendChild(div);
+  }
+}
+
+window.FRAME_COUNT = frames.length;
+window.setFrame = function(i){
+  i = Math.max(0, Math.min(frames.length-1, i));
+  drawFrame(frames[i]);
+  return frames.length;
+};
+window.setFrame(0);
+</script>
+</body>
+</html>

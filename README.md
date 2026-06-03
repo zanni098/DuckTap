@@ -14,18 +14,16 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](pyproject.toml)
 
-<!-- Render the demo GIF with `vhs demo/demo.tape` (see demo/DEMO.md), commit demo/ducktap.gif,
-     then uncomment the line below so the hero leads with the 30-second demo. -->
-<!-- ![DuckTap: OpenAPI spec → MCP server in one command](demo/ducktap.gif) -->
+![DuckTap: OpenAPI spec → MCP server in one command](demo/ducktap.gif)
 
 ```text
 $ ducktap press ./openapi.yaml --name petstore
 Pressed petstore (19 operations) -> out
-  python-cli: 10 files
+  python-cli: 11 files
   mcp-server: 5 files
   skill:      3 files
 
-Scorecard: 92/100 (A)
+Scorecard: 87/100 (B)
   - coverage:      95  -- 19 operations exposed
   - documentation: 100 -- 19/19 operations have docs
   - auth:          100 -- 2 auth scheme(s)
