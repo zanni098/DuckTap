@@ -1,8 +1,29 @@
 # Changelog
 
-## Unreleased
+## 0.7.0 -- 2026-06-07
 
-Multi-language generators are now reachable and compile-verified.
+Multi-language generators are now reachable, compile-verified, and share an
+agent-parity command bundle with the Python CLI.
+
+### Added
+
+- **Agent-parity bundle in the Go, Rust, and TypeScript CLIs** — the three
+  non-Python generators now match the Python CLI on the agent-facing basics:
+  - `--dry-run` global flag — prints the assembled request
+    (method/path/url/query) as JSON and exits without calling the API.
+  - `agent-context` command — emits a JSON manifest (cli, version, exit codes,
+    and every operation's command/method/path/summary) so an agent can
+    self-introspect without parsing `--help`.
+  - **Typed exit codes** — `3` (404), `4` (401/403), `5` (other API error),
+    `7` (429) on every command, mapped from the HTTP status.
+  - `--base-url` override flag on all three.
+- `tests/test_generated_multilang.py` — a render-smoke test (always on) plus
+  per-language compile tests gated behind `DUCKTAP_COMPILE_TESTS=1`. The compile
+  tests build each project *and* run `agent-context`, validating the shared
+  manifest shape across languages.
+- A `generated-clis` CI job that builds the generated Go, Rust, and TypeScript
+  projects with their real toolchains on every push.
+- Type checking (`mypy`) is now a required CI step.
 
 ### Fixed
 

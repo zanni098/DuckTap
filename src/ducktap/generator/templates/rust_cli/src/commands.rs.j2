@@ -1,7 +1,28 @@
 use clap::Args;
 use serde_json::json;
 
-use crate::client::ApiClient;
+use crate::client::{ApiClient, GlobalOpts};
+
+/// Emit a machine-readable manifest of this CLI for agents.
+pub fn agent_context() -> anyhow::Result<()> {
+    let ctx = json!({
+        "cli": "{{ cli_bin }}",
+        "version": "{{ spec.version }}",
+        "exit_codes": {
+            "3": "not found (404)",
+            "4": "auth error (401/403)",
+            "5": "API error",
+            "7": "rate limited (429)"
+        },
+        "operations": [
+            {% for op in operations %}
+            {"command": "{{ op.operation_id | cmd }}", "method": "{{ op.method }}", "path": "{{ op.path }}", "summary": {{ (op.summary or op.description or '') | json }}}{{ "," if not loop.last else "" }}
+            {% endfor %}
+        ]
+    });
+    println!("{}", serde_json::to_string_pretty(&ctx)?);
+    Ok(())
+}
 
 {% for op in operations %}
 #[derive(Args)]
@@ -17,8 +38,8 @@ pub struct {{ op.operation_id | cmd | rustident }}Args {
     {% endfor %}
 }
 
-pub async fn {{ op.operation_id | cmd | rustident }}({% if dedup(op) %}args{% else %}_args{% endif %}: {{ op.operation_id | cmd | rustident }}Args) -> anyhow::Result<()> {
-    let client = ApiClient::new();
+pub async fn {{ op.operation_id | cmd | rustident }}({% if dedup(op) %}args{% else %}_args{% endif %}: {{ op.operation_id | cmd | rustident }}Args, opts: &GlobalOpts) -> anyhow::Result<()> {
+    let client = ApiClient::new(opts.base_url.as_deref());
     let path = "{{ op.path }}"
         {% for p in dedup(op) if p.location == 'path' %}
         .replace("{{ '{' + p.name + '}' }}", &args.{{ p.name | rustident }}.to_string())
@@ -50,6 +71,17 @@ pub async fn {{ op.operation_id | cmd | rustident }}({% if dedup(op) %}args{% el
     {% else %}
     let body: Option<serde_json::Value> = None;
     {% endif %}
+    if opts.dry_run {
+        let payload = json!({
+            "dryRun": true,
+            "method": "{{ op.method }}",
+            "path": path,
+            "url": client.build_url(&path),
+            "query": query,
+        });
+        println!("{}", serde_json::to_string_pretty(&payload)?);
+        return Ok(());
+    }
     let result = client.request("{{ op.method }}", &path, &query, body).await?;
     println!("{}", serde_json::to_string_pretty(&result)?);
     Ok(())

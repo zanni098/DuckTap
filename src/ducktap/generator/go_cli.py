@@ -102,6 +102,7 @@ class GoCLIGenerator:
             ("go_cli/go.mod.j2", root / "go.mod"),
             ("go_cli/main.go.j2", root / "main.go"),
             ("go_cli/cmd/root.go.j2", cmd / "root.go"),
+            ("go_cli/cmd/agent_context.go.j2", cmd / "agent_context.go"),
             ("go_cli/internal/client.go.j2", internal / "client.go"),
             ("go_cli/README.md.j2", root / "README.md"),
             ("go_cli/.gitignore.j2", root / ".gitignore"),

@@ -14,6 +14,7 @@ Two tiers:
 """
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -22,6 +23,16 @@ from pathlib import Path
 import pytest
 
 from ducktap.core.pipeline import press
+
+
+def _assert_agent_context(stdout: str) -> None:
+    """Validate the shared agent-context manifest shape across languages."""
+    data = json.loads(stdout)
+    assert data["cli"]
+    assert data["operations"], "agent-context listed no operations"
+    assert {"3", "4", "5", "7"} <= set(data["exit_codes"]), data["exit_codes"]
+    for op in data["operations"]:
+        assert {"command", "method", "path"} <= set(op)
 
 FIXTURE = Path(__file__).parent / "fixtures" / "petstore.yaml"
 
@@ -64,8 +75,11 @@ def test_go_cli_builds(tmp_path):
     env = {**os.environ, "GOFLAGS": "-mod=mod", "GOTOOLCHAIN": "local"}
     tidy = _run(["go", "mod", "tidy"], root, env=env)
     assert tidy.returncode == 0, tidy.stderr
-    build = _run(["go", "build", "./..."], root, env=env)
+    build = _run(["go", "build", "-o", "petstore-dt-go", "."], root, env=env)
     assert build.returncode == 0, build.stderr
+    ctx = _run(["./petstore-dt-go", "agent-context"], root, env=env)
+    assert ctx.returncode == 0, ctx.stderr
+    _assert_agent_context(ctx.stdout)
 
 
 @_compile_only
@@ -76,6 +90,9 @@ def test_rust_cli_builds(tmp_path):
     assert build.returncode == 0, build.stderr
     # Treat warnings as a polish regression: the templates should be clean.
     assert "warning:" not in build.stderr, build.stderr
+    ctx = _run(["./target/debug/petstore_dt_rs", "agent-context"], root)
+    assert ctx.returncode == 0, ctx.stderr
+    _assert_agent_context(ctx.stdout)
 
 
 @_compile_only
@@ -88,3 +105,8 @@ def test_typescript_cli_builds(tmp_path):
     assert install.returncode == 0, install.stderr
     build = _run(["npx", "tsc", "--noEmit"], root)
     assert build.returncode == 0, build.stdout + build.stderr
+    emit = _run(["npm", "run", "build"], root)
+    assert emit.returncode == 0, emit.stderr
+    ctx = _run(["node", "./bin/run.js", "agent-context"], root)
+    assert ctx.returncode == 0, ctx.stderr
+    _assert_agent_context(ctx.stdout)

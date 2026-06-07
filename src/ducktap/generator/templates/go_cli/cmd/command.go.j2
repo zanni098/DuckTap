@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+
 	"{{ mod_name }}/internal"
 )
 
@@ -13,7 +14,7 @@ var {{ op.operation_id | cmd | goident }}Cmd = &cobra.Command{
 	Short: {{ (op.summary or op.description or op.method + ' ' + op.path) | gostr }},
 	Args:  cobra.ExactArgs({{ path_params(op) | length }}),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := internal.NewClient()
+		client := internal.NewClient(flagBaseURL)
 		path := "{{ op.path }}"
 		{% for p in path_params(op) %}
 		path = internal.ReplacePathParam(path, "{{ '{' + p.name + '}' }}", args[{{ loop.index0 }}])
@@ -25,6 +26,16 @@ var {{ op.operation_id | cmd | goident }}Cmd = &cobra.Command{
 			query["{{ p.name }}"] = v
 		}
 		{% endfor %}
+		if flagDryRun {
+			fmt.Println(internal.PrettyJSON(map[string]interface{}{
+				"dryRun": true,
+				"method": "{{ op.method }}",
+				"path":   path,
+				"url":    client.BuildURL(path, query),
+				"query":  query,
+			}))
+			return nil
+		}
 		result, err := client.Request("{{ op.method }}", path, query, nil)
 		if err != nil {
 			return err

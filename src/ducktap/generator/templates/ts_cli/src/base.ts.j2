@@ -3,10 +3,18 @@ import axios, { AxiosRequestConfig } from 'axios'
 
 export abstract class BaseCommand extends Command {
   static baseFlags = {
-    'base-url': Flags.string({ description: 'Override API base URL', env: '{{ spec.name | upper }}_BASE_URL' }),
-    'auth-token': Flags.string({ description: 'Bearer token or API key', env: '{{ spec.name | upper }}_TOKEN' }),
+    'base-url': Flags.string({ description: 'Override API base URL', env: '{{ spec.name | upper | replace("-", "_") }}_BASE_URL' }),
+    'auth-token': Flags.string({ description: 'Bearer token or API key', env: '{{ spec.name | upper | replace("-", "_") }}_TOKEN' }),
     json: Flags.boolean({ description: 'Output JSON' }),
     'dry-run': Flags.boolean({ description: 'Show request without calling API' }),
+  }
+
+  // Map an HTTP status to the shared DuckTap exit-code palette.
+  protected exitCodeFor(status: number): number {
+    if (status === 404) return 3
+    if (status === 401 || status === 403) return 4
+    if (status === 429) return 7
+    return 5
   }
 
   protected async apiRequest(config: AxiosRequestConfig, dryRun: boolean): Promise<any> {
@@ -14,7 +22,17 @@ export abstract class BaseCommand extends Command {
       this.log(JSON.stringify({ dryRun: true, ...config }, null, 2))
       return { dryRun: true }
     }
-    const response = await axios.request(config)
-    return response.data
+    try {
+      const response = await axios.request(config)
+      return response.data
+    } catch (err) {
+      if (axios.isAxiosError(err) && err.response) {
+        const status = err.response.status
+        this.error(JSON.stringify({ status, body: err.response.data }), {
+          exit: this.exitCodeFor(status),
+        })
+      }
+      throw err
+    }
   }
 }

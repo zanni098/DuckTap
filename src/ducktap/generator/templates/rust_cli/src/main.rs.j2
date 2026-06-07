@@ -7,16 +7,29 @@ mod commands;
 
 use clap::{Parser, Subcommand};
 
+use crate::client::{ApiError, GlobalOpts};
+
 #[derive(Parser)]
 #[command(name = "{{ cli_bin }}")]
-#[command(about = "Agent-native CLI for {{ spec.display_name or spec.name }}")]
+#[command(about = {{ ("Agent-native CLI for " + (spec.display_name or spec.name)) | json }})]
 struct Cli {
+    /// Override the API base URL.
+    #[arg(long, global = true)]
+    base_url: Option<String>,
+
+    /// Print the request without calling the API.
+    #[arg(long, global = true)]
+    dry_run: bool,
+
     #[command(subcommand)]
     command: Commands,
 }
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Emit a JSON manifest describing this CLI for agents.
+    #[command(name = "agent-context")]
+    AgentContext,
     {% for op in operations %}
     #[command(name = "{{ op.operation_id | cmd }}")]
     {{ op.operation_id | cmd | rustident }}(commands::{{ op.operation_id | cmd | rustident }}Args),
@@ -24,11 +37,21 @@ enum Commands {
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() {
     let cli = Cli::parse();
-    match cli.command {
+    let opts = GlobalOpts { base_url: cli.base_url, dry_run: cli.dry_run };
+    let result = match cli.command {
+        Commands::AgentContext => commands::agent_context(),
         {% for op in operations %}
-        Commands::{{ op.operation_id | cmd | rustident }}(args) => commands::{{ op.operation_id | cmd | rustident }}(args).await,
+        Commands::{{ op.operation_id | cmd | rustident }}(args) => commands::{{ op.operation_id | cmd | rustident }}(args, &opts).await,
         {% endfor %}
+    };
+    if let Err(e) = result {
+        if let Some(api) = e.downcast_ref::<ApiError>() {
+            eprintln!("{}", api.to_json());
+            std::process::exit(api.exit_code());
+        }
+        eprintln!("{}", e);
+        std::process::exit(1);
     }
 }

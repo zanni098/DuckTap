@@ -1,0 +1,24 @@
+import {Command} from '@oclif/core'
+
+export default class AgentContext extends Command {
+  static description = 'Emit a JSON manifest describing this CLI for agents'
+
+  async run(): Promise<void> {
+    const ctx = {
+      cli: '{{ cli_bin }}',
+      version: '{{ spec.version }}',
+      exit_codes: {
+        '3': 'not found (404)',
+        '4': 'auth error (401/403)',
+        '5': 'API error',
+        '7': 'rate limited (429)',
+      },
+      operations: [
+        {% for op in operations %}
+        {command: {{ op.operation_id | cmd | json }}, method: {{ op.method | json }}, path: {{ op.path | json }}, summary: {{ (op.summary or op.description or '') | json }}},
+        {% endfor %}
+      ],
+    }
+    this.log(JSON.stringify(ctx, null, 2))
+  }
+}

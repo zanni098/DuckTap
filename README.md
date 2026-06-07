@@ -56,7 +56,9 @@ the traffic when no spec exists, and prints:
 
   Generate any of these with `ducktap press <spec> -t go-cli,rust-cli,typescript-cli`.
   Each language's generated project is **compiled in CI** (`go build`, `cargo build`,
-  `tsc`) so the templates can't silently drift.
+  `tsc`) so the templates can't silently drift. As of v0.7.0 all four languages
+  share an **agent-parity bundle**: a `--dry-run` flag, an `agent-context` JSON
+  self-introspection command, and typed exit codes (`3`/`4`/`5`/`7`).
 - **An MCP server** (`<api>-dt-mcp`) -- every operation exposed as an MCP tool, stdio transport, drop into Claude Desktop or Cursor in 60 seconds.
 - **A skill** for Claude Code, Cursor (`.mdc`), and a generic `tools.json` -- so any agent harness can pick up where the others left off.
 - **A scorecard** grading coverage, docs, auth clarity, typed params, artifacts, and naming.

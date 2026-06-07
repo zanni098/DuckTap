@@ -132,6 +132,11 @@ over) Printing Press.
 - [x] TypeScript CLI generator (oclif)
 - [x] Go CLI generator (cobra) -- for users who want the Printing Press output shape
 - [x] Rust CLI generator (clap) -- single-binary distribution
+
+  > **0.7.0 correction:** these three generators shipped in 0.6.0 but were not
+  > wired into `autoload_builtins` and did not compile. v0.7.0 makes them
+  > reachable, compile-verified in CI, and brings them to agent parity (see
+  > the v0.7.0 section below).
 - [x] 30+ catalog entries (30 APIs)
 - [x] Domain-specific SQLite tables + FTS5 in generated mirror
 - [x] Compound query commands (`stale`, `health`, `bottleneck`) in generated CLIs
@@ -167,17 +172,18 @@ over) Printing Press.
 | `ducktap publish` → PyPI + GitHub | ✅ landed v0.5.0 |
 | Auto-generated GitHub Actions | ✅ landed v0.5.0 |
 | Library registry | ✅ landed v0.5.0 |
-| Multi-language generators (Go/TS/Rust) | ✅ landed v0.6.0 |
-| Compound query commands (`stale`, `health`, `bottleneck`) | ✅ landed v0.6.0 |
+| Multi-language generators (Go/TS/Rust) | ✅ landed v0.6.0; **compile-verified in CI v0.7.0** |
+| Go/Rust/TS `--dry-run`, `agent-context`, typed exit codes | ✅ landed v0.7.0 |
+| Compound query commands (`stale`, `health`, `bottleneck`) | ✅ landed v0.6.0 (Python CLI) |
 | 2-tier scorecard (domain correctness dimension) | ✅ landed v0.6.0 (structural; deep pipeline verification → v0.8) |
 | Live API smoke test | ✅ landed v0.6.0 |
 | `emboss` brand-stamp | ✅ landed v0.6.0 |
 | `vision` LLM screenshot reading | ✅ landed v0.6.0 |
 | 30+ catalog entries | ✅ landed v0.6.0 (30 entries) |
-| Non-Obvious Insight (NOI) generation | ⏳ v0.7 |
-| Ecosystem absorb gate | ⏳ v0.7 |
-| Domain archetypes (5 archetypes, typed commands) | ⏳ v0.7 |
-| True domain-specific SQLite (typed per-resource tables) | ⏳ v0.7 |
+| Non-Obvious Insight (NOI) generation | ⏳ v0.7.x |
+| Ecosystem absorb gate | ⏳ v0.7.x |
+| Domain archetypes (5 archetypes, typed commands) | ⏳ v0.7.x |
+| True domain-specific SQLite (typed per-resource tables) | ⏳ v0.7.x |
 | Proof of behavior (4 mechanical proofs) | ⏳ v0.8 |
 | Rung 5 behavioral insights (`similar`, `trends`, `forecast`) | ⏳ v0.8 |
 | Cursor-based incremental sync | ⏳ v0.8 |
@@ -209,7 +215,32 @@ over) Printing Press.
 
 ---
 
-## v0.7.0 — The Creative Layer
+## v0.7.0 — Multi-language parity ✓ (shipped 2026-06-07)
+
+The 0.6.0 multi-language generators were advertised but broken. v0.7.0 makes
+them real and brings them up to agent parity with the Python CLI.
+
+- [x] **Generators reachable** — Go/Rust/TS registered in `autoload_builtins`;
+  `ducktap press -t go-cli,rust-cli,typescript-cli` now works.
+- [x] **All three compile** — flat cobra `cmd` package + `root.go` for Go;
+  deduped clap args, owned query strings, array params, zero-warning build for
+  Rust; fixed import depth + runnable `bin/run.js` for TypeScript.
+- [x] **`generated-clis` CI job** — `go build`, `cargo build`, and `tsc` run on
+  every push so the templates cannot silently drift.
+- [x] **Agent-parity bundle** in Go/Rust/TS generated CLIs:
+  - `--dry-run` (print request, don't call)
+  - `agent-context` (JSON self-introspection manifest)
+  - typed exit codes (3/4/5/7) mapped from HTTP status
+  - `--base-url` override
+- [x] **Compile tests also run `agent-context`** and assert a shared manifest
+  shape across languages.
+
+The remaining feature delta in the non-Python CLIs (local SQLite mirror, FTS5,
+compound query commands) is tracked for a later release.
+
+---
+
+## v0.7.x — The Creative Layer (planned)
 
 The single most important gap between DuckTap and Printing Press is not features — it is
 creative depth. PP generates CLIs *around an insight*. DuckTap generates CLIs *from a spec*.

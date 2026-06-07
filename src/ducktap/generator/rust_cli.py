@@ -5,6 +5,7 @@ command framework. Builds to a single binary for easy distribution.
 """
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from typing import Any
@@ -89,6 +90,8 @@ class RustCLIGenerator:
         env.filters["cmd"] = cli_command_name
         env.filters["rusttype"] = _rust_type
         env.filters["rustident"] = _rustident
+        # A Rust string literal: JSON escaping is compatible for our purposes.
+        env.filters["json"] = lambda v: json.dumps(v if isinstance(v, str) else str(v))
 
         pkg_name = spec.name.replace("-", "_") + "_dt_rs"
         root = Path(out_dir) / (spec.name + "-dt-rs")

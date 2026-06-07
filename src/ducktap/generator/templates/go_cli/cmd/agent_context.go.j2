@@ -1,0 +1,39 @@
+package cmd
+
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+
+	"{{ mod_name }}/internal"
+)
+
+// agentContextCmd emits a machine-readable manifest of this CLI so an agent can
+// self-introspect (commands, exit codes) without parsing --help text.
+var agentContextCmd = &cobra.Command{
+	Use:   "agent-context",
+	Short: "Emit a JSON manifest describing this CLI for agents",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		ctx := map[string]interface{}{
+			"cli":     "{{ cli_bin }}",
+			"version": "{{ spec.version }}",
+			"exit_codes": map[string]string{
+				"3": "not found (404)",
+				"4": "auth error (401/403)",
+				"5": "API error",
+				"7": "rate limited (429)",
+			},
+			"operations": []map[string]string{
+				{% for op in operations %}
+				{"command": "{{ op.operation_id | cmd }}", "method": "{{ op.method }}", "path": "{{ op.path }}", "summary": {{ (op.summary or op.description or '') | gostr }}},
+				{% endfor %}
+			},
+		}
+		fmt.Println(internal.PrettyJSON(ctx))
+		return nil
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(agentContextCmd)
+}

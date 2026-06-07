@@ -98,6 +98,7 @@ class TypeScriptCLIGenerator:
             ("ts_cli/bin/run.js.j2", root / "bin" / "run.js"),
             ("ts_cli/src/base.ts.j2", src / "base.ts"),
             ("ts_cli/src/index.ts.j2", src / "index.ts"),
+            ("ts_cli/src/agent-context.ts.j2", src / "commands" / "agent-context.ts"),
             ("ts_cli/README.md.j2", root / "README.md"),
             ("ts_cli/.gitignore.j2", root / ".gitignore"),
         ]

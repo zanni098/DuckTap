@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -17,9 +18,13 @@ type Client struct {
 	HTTP      *http.Client
 }
 
-// NewClient creates a client from environment variables.
-func NewClient() *Client {
-	base := os.Getenv("{{ spec.name | upper | replace('-', '_') }}_BASE_URL")
+// NewClient creates a client. A non-empty baseOverride (from --base-url) wins
+// over the {{ spec.name | upper | replace('-', '_') }}_BASE_URL env var and the spec default.
+func NewClient(baseOverride string) *Client {
+	base := baseOverride
+	if base == "" {
+		base = os.Getenv("{{ spec.name | upper | replace('-', '_') }}_BASE_URL")
+	}
 	if base == "" {
 		base = "{{ spec.base_url }}"
 	}
@@ -30,10 +35,51 @@ func NewClient() *Client {
 	}
 }
 
-// Request performs an HTTP request and returns the decoded body.
+// APIError is returned for non-2xx responses.
+type APIError struct {
+	Status int         `json:"status"`
+	Body   interface{} `json:"body"`
+}
+
+func (e *APIError) Error() string { return fmt.Sprintf("HTTP %d", e.Status) }
+
+// ExitCode maps an HTTP status to the shared DuckTap exit-code palette.
+func (e *APIError) ExitCode() int {
+	switch {
+	case e.Status == 404:
+		return 3
+	case e.Status == 401 || e.Status == 403:
+		return 4
+	case e.Status == 429:
+		return 7
+	default:
+		return 5
+	}
+}
+
+// JSON renders the error as pretty JSON for stderr.
+func (e *APIError) JSON() string {
+	b, _ := json.MarshalIndent(e, "", "  ")
+	return string(b)
+}
+
+// BuildURL assembles the full request URL including the query string.
+func (c *Client) BuildURL(path string, query map[string]string) string {
+	full := c.BaseURL + path
+	if len(query) > 0 {
+		vals := url.Values{}
+		for k, v := range query {
+			vals.Set(k, v)
+		}
+		full += "?" + vals.Encode()
+	}
+	return full
+}
+
+// Request performs an HTTP request and returns the decoded body. Non-2xx
+// responses are returned as *APIError.
 func (c *Client) Request(method, path string, query map[string]string, body io.Reader) (interface{}, error) {
-	url := c.BaseURL + path
-	req, err := http.NewRequest(method, url, body)
+	req, err := http.NewRequest(method, c.BaseURL+path, body)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +101,9 @@ func (c *Client) Request(method, path string, query map[string]string, body io.R
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
+		var b interface{}
+		_ = json.NewDecoder(resp.Body).Decode(&b)
+		return nil, &APIError{Status: resp.StatusCode, Body: b}
 	}
 	var result interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
