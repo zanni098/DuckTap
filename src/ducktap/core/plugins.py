@@ -97,8 +97,11 @@ def autoload_builtins() -> None:
     from ducktap.discovery import browser_sniff as _b  # noqa: F401
     from ducktap.discovery import har as _h  # noqa: F401
     from ducktap.discovery import openapi as _o  # noqa: F401
-    from ducktap.generator import mcp_server as _mcp  # noqa: F401
 
     # Generators
+    from ducktap.generator import go_cli as _go  # noqa: F401
+    from ducktap.generator import mcp_server as _mcp  # noqa: F401
     from ducktap.generator import python_cli as _pc  # noqa: F401
+    from ducktap.generator import rust_cli as _rs  # noqa: F401
     from ducktap.generator import skill as _s  # noqa: F401
+    from ducktap.generator import typescript_cli as _ts  # noqa: F401

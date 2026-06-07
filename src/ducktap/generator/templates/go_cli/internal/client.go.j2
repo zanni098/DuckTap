@@ -31,7 +31,7 @@ func NewClient() *Client {
 }
 
 // Request performs an HTTP request and returns the decoded body.
-func (c *Client) Request(method, path string, query map[string]string, body io.Reader) (map[string]interface{}, error) {
+func (c *Client) Request(method, path string, query map[string]string, body io.Reader) (interface{}, error) {
 	url := c.BaseURL + path
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
@@ -57,7 +57,7 @@ func (c *Client) Request(method, path string, query map[string]string, body io.R
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
-	var result map[string]interface{}
+	var result interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, err
 	}
@@ -65,7 +65,7 @@ func (c *Client) Request(method, path string, query map[string]string, body io.R
 }
 
 // PrettyJSON returns a pretty-printed JSON string.
-func PrettyJSON(v map[string]interface{}) string {
+func PrettyJSON(v interface{}) string {
 	b, _ := json.MarshalIndent(v, "", "  ")
 	return string(b)
 }

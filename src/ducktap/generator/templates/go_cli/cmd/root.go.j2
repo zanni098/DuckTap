@@ -1,0 +1,20 @@
+package cmd
+
+import (
+	"os"
+
+	"github.com/spf13/cobra"
+)
+
+var rootCmd = &cobra.Command{
+	Use:   "{{ cli_bin }}",
+	Short: {{ (spec.display_name or spec.name) | gostr }},
+	Long:  {{ (spec.description or spec.display_name or spec.name) | gostr }},
+}
+
+// Execute runs the root command and exits non-zero on error.
+func Execute() {
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
+	}
+}

@@ -5,6 +5,8 @@ command framework.
 """
 from __future__ import annotations
 
+import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +18,15 @@ from ducktap.core.naming import cli_command_name, flag_name
 from ducktap.core.spec import APISpec, Operation, Param
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
+_IDENT_RE = re.compile(r"[^A-Za-z0-9_]+")
+
+
+def _tsident(s: str) -> str:
+    """Turn an arbitrary string into a safe TypeScript identifier."""
+    out = _IDENT_RE.sub("", str(s))
+    if out and out[0].isdigit():
+        out = "_" + out
+    return out or "_"
 
 
 def _env() -> Environment:
@@ -60,15 +71,8 @@ class TypeScriptCLIGenerator:
         env.filters["flag"] = flag_name
         env.filters["cmd"] = cli_command_name
         env.filters["tstype"] = _ts_type
-        import re as _re
-        _ident_re = _re.compile(r"[^A-Za-z0-9_]+")
-
-        def _tsident(s: str) -> str:
-            out = _ident_re.sub("", str(s))
-            if out and out[0].isdigit():
-                out = "_" + out
-            return out or "_"
         env.filters["tsident"] = _tsident
+        env.filters["json"] = lambda v: json.dumps(v)
 
         pkg_name = spec.name + "-dt-ts"
         root = Path(out_dir) / pkg_name
@@ -91,6 +95,7 @@ class TypeScriptCLIGenerator:
         files = [
             ("ts_cli/package.json.j2", root / "package.json"),
             ("ts_cli/tsconfig.json.j2", root / "tsconfig.json"),
+            ("ts_cli/bin/run.js.j2", root / "bin" / "run.js"),
             ("ts_cli/src/base.ts.j2", src / "base.ts"),
             ("ts_cli/src/index.ts.j2", src / "index.ts"),
             ("ts_cli/README.md.j2", root / "README.md"),

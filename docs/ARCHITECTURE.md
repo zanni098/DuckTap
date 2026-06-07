@@ -15,6 +15,9 @@ between two extensible plugin layers (Discoverers and Generators).
 | `ducktap.discovery.har` | HAR file → `APISpec` (clustered request grouping). |
 | `ducktap.discovery.browser_sniff` | Playwright → HAR → `APISpec`. |
 | `ducktap.generator.python_cli` | `APISpec` → Click-based Python CLI package. |
+| `ducktap.generator.typescript_cli` | `APISpec` → oclif TypeScript CLI (`tsc`-verified). |
+| `ducktap.generator.go_cli` | `APISpec` → cobra Go CLI (`go build`-verified). |
+| `ducktap.generator.rust_cli` | `APISpec` → clap Rust CLI (`cargo build`-verified). |
 | `ducktap.generator.mcp_server` | `APISpec` → MCP server package (stdio). |
 | `ducktap.generator.skill` | `APISpec` → `SKILL.md`, `.mdc`, `tools.json`. |
 | `ducktap.llm.base` | LiteLLM wrapper — multi-provider chat. |

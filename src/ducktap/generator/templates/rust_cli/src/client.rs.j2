@@ -24,7 +24,7 @@ impl ApiClient {
         &self,
         method: &str,
         path: &str,
-        query: &[(&str, &str)],
+        query: &[(String, String)],
         body: Option<Value>,
     ) -> anyhow::Result<Value> {
         let url = format!("{}{}", self.base_url, path);

@@ -6,43 +6,49 @@ use crate::client::ApiClient;
 {% for op in operations %}
 #[derive(Args)]
 pub struct {{ op.operation_id | cmd | rustident }}Args {
-    {% for p in op.params if p.location == 'path' %}
+    {% for p in dedup(op) if p.location == 'path' %}
     /// {{ p.description }}
     pub {{ p.name | rustident }}: {{ p | rusttype }},
     {% endfor %}
-    {% for p in op.params if p.location in ['query', 'body', 'header'] %}
-    #[arg(long = "{{ p.name | flag }}")]
+    {% for p in dedup(op) if p.location in ['query', 'body', 'header'] %}
     /// {{ p.description }}
+    #[arg(long = "{{ p.name | flag }}")]
     pub {{ p.name | rustident }}: Option<{{ p | rusttype }}>,
     {% endfor %}
 }
 
-pub async fn {{ op.operation_id | cmd | rustident }}(args: {{ op.operation_id | cmd | rustident }}Args) -> anyhow::Result<()> {
+pub async fn {{ op.operation_id | cmd | rustident }}({% if dedup(op) %}args{% else %}_args{% endif %}: {{ op.operation_id | cmd | rustident }}Args) -> anyhow::Result<()> {
     let client = ApiClient::new();
     let path = "{{ op.path }}"
-        {% for p in op.params if p.location == 'path' %}
+        {% for p in dedup(op) if p.location == 'path' %}
         .replace("{{ '{' + p.name + '}' }}", &args.{{ p.name | rustident }}.to_string())
         {% endfor %};
-    {% if op.params | selectattr('location', 'equalto', 'query') | list %}
-    let mut query = vec![];
-    {% for p in op.params if p.location == 'query' %}
-    if let Some(v) = args.{{ p.name | rustident }} {
-        query.push(("{{ p.name }}", v.to_string().as_str()));
+    {% if dedup(op) | selectattr('location', 'equalto', 'query') | list %}
+    let mut query: Vec<(String, String)> = Vec::new();
+    {% for p in dedup(op) if p.location == 'query' %}
+    if let Some(v) = &args.{{ p.name | rustident }} {
+        {% if p.type == 'array' %}
+        for item in v {
+            query.push(("{{ p.name }}".to_string(), item.to_string()));
+        }
+        {% else %}
+        query.push(("{{ p.name }}".to_string(), v.to_string()));
+        {% endif %}
     }
     {% endfor %}
     {% else %}
-    let query = vec![];
+    let query: Vec<(String, String)> = Vec::new();
     {% endif %}
-    {% if op.params | selectattr('location', 'equalto', 'body') | list %}
+    {% if dedup(op) | selectattr('location', 'equalto', 'body') | list %}
     let mut body_map = serde_json::Map::new();
-    {% for p in op.params if p.location == 'body' %}
-    if let Some(v) = args.{{ p.name | rustident }} {
+    {% for p in dedup(op) if p.location == 'body' %}
+    if let Some(v) = &args.{{ p.name | rustident }} {
         body_map.insert("{{ p.name }}".to_string(), json!(v));
     }
     {% endfor %}
     let body = if body_map.is_empty() { None } else { Some(serde_json::Value::Object(body_map)) };
     {% else %}
-    let body = None;
+    let body: Option<serde_json::Value> = None;
     {% endif %}
     let result = client.request("{{ op.method }}", &path, &query, body).await?;
     println!("{}", serde_json::to_string_pretty(&result)?);

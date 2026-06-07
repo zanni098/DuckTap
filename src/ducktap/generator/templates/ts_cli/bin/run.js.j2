@@ -1,0 +1,10 @@
+#!/usr/bin/env node
+
+// Dev/prod entrypoint for the oclif CLI. Commands are loaded from the compiled
+// ./dist/commands directory (run `npm run build` first).
+const oclif = require('@oclif/core')
+
+oclif
+  .execute({dir: __dirname})
+  .then(oclif.flush)
+  .catch(oclif.Errors.handle)

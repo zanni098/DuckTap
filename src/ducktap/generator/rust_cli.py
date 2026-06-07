@@ -5,6 +5,7 @@ command framework. Builds to a single binary for easy distribution.
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,15 @@ from ducktap.core.naming import cli_command_name, flag_name
 from ducktap.core.spec import APISpec, Operation, Param
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
+_IDENT_RE = re.compile(r"[^A-Za-z0-9_]+")
+
+
+def _rustident(s: str) -> str:
+    """Turn an arbitrary string into a safe Rust identifier."""
+    out = _IDENT_RE.sub("_", str(s))
+    if out and out[0].isdigit():
+        out = "_" + out
+    return out or "_"
 
 
 def _env() -> Environment:
@@ -51,6 +61,24 @@ def _header_params(op: Operation) -> list[Param]:
     return [p for p in op.params if p.location == "header"]
 
 
+# Priority for resolving duplicate parameter names: a name used in the path
+# wins over the same name appearing in the query/header/body, so the generated
+# Args struct never declares the same field twice.
+_LOC_PRIORITY = {"path": 0, "query": 1, "header": 2, "body": 3}
+
+
+def _dedup_params(op: Operation) -> list[Param]:
+    """Return op.params with duplicate names removed (first-wins by location)."""
+    seen: set[str] = set()
+    out: list[Param] = []
+    for p in sorted(op.params, key=lambda p: _LOC_PRIORITY.get(p.location, 9)):
+        if p.name in seen:
+            continue
+        seen.add(p.name)
+        out.append(p)
+    return out
+
+
 class RustCLIGenerator:
     name = "rust-cli"
     target = "rust-cli"
@@ -60,14 +88,6 @@ class RustCLIGenerator:
         env.filters["flag"] = flag_name
         env.filters["cmd"] = cli_command_name
         env.filters["rusttype"] = _rust_type
-        import re as _re
-        _ident_re = _re.compile(r"[^A-Za-z0-9_]+")
-
-        def _rustident(s: str) -> str:
-            out = _ident_re.sub("_", str(s))
-            if out and out[0].isdigit():
-                out = "_" + out
-            return out or "_"
         env.filters["rustident"] = _rustident
 
         pkg_name = spec.name.replace("-", "_") + "_dt_rs"
@@ -85,6 +105,7 @@ class RustCLIGenerator:
             "query_params": _query_params,
             "body_params": _body_params,
             "header_params": _header_params,
+            "dedup": _dedup_params,
         }
         written: list[str] = []
 
