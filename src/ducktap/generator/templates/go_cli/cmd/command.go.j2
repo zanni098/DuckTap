@@ -1,37 +1,41 @@
-package {{ op.tags[0] | cmd if op.tags else 'general' }}
+package cmd
 
 import (
 	"fmt"
+
 	"github.com/spf13/cobra"
+
 	"{{ mod_name }}/internal"
 )
 
-// {{ op.operation_id | cmd | goident }}Cmd represents the {{ op.operation_id | cmd }} command
+// {{ op.operation_id | cmd | goident }}Cmd runs the {{ op.operation_id | cmd }} operation ({{ op.method }} {{ op.path }}).
 var {{ op.operation_id | cmd | goident }}Cmd = &cobra.Command{
-	Use:   "{{ op.operation_id | cmd }}{% for p in op.params if p.location == 'path' %} <{{ p.name }}>{% endfor %}",
-	Short: "{{ op.summary or op.description or op.method + ' ' + op.path }}",
+	Use:   "{{ op.operation_id | cmd }}{% for p in path_params(op) %} <{{ p.name }}>{% endfor %}",
+	Short: {{ (op.summary or op.description or op.method + ' ' + op.path) | gostr }},
+	Args:  cobra.ExactArgs({{ path_params(op) | length }}),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		client := internal.NewClient()
-		{% for p in op.params if p.location == 'path' %}
-		{{ p.name | goident }} := args[{{ loop.index0 }}]
-		{% endfor %}
+		client := internal.NewClient(flagBaseURL)
 		path := "{{ op.path }}"
-		{% for p in op.params if p.location == 'path' %}
-		path = internal.ReplacePathParam(path, "{{ '{' + p.name + '}' }}", {{ p.name | goident }})
+		{% for p in path_params(op) %}
+		path = internal.ReplacePathParam(path, "{{ '{' + p.name + '}' }}", args[{{ loop.index0 }}])
 		{% endfor %}
-
-		{% if op.params | selectattr('location', 'equalto', 'query') | list %}
-		query := make(map[string]string)
-		{% for p in op.params if p.location == 'query' %}
+		query := map[string]string{}
+		{% for p in query_params(op) %}
 		if cmd.Flags().Changed("{{ p.name | flag }}") {
 			v, _ := cmd.Flags().GetString("{{ p.name | flag }}")
 			query["{{ p.name }}"] = v
 		}
 		{% endfor %}
-		{% else %}
-		query := map[string]string{}
-		{% endif %}
-
+		if flagDryRun {
+			fmt.Println(internal.PrettyJSON(map[string]interface{}{
+				"dryRun": true,
+				"method": "{{ op.method }}",
+				"path":   path,
+				"url":    client.BuildURL(path, query),
+				"query":  query,
+			}))
+			return nil
+		}
 		result, err := client.Request("{{ op.method }}", path, query, nil)
 		if err != nil {
 			return err
@@ -42,7 +46,8 @@ var {{ op.operation_id | cmd | goident }}Cmd = &cobra.Command{
 }
 
 func init() {
-	{% for p in op.params if p.location in ['query', 'body', 'header'] %}
-	{{ op.operation_id | cmd | goident }}Cmd.Flags().{{ 'String' if p.type == 'string' else 'Int' if p.type == 'integer' else 'String' }}("{{ p.name | flag }}", "{{ p.default or '' }}", "{{ p.description }}")
+	{% for p in query_params(op) + header_params(op) %}
+	{{ op.operation_id | cmd | goident }}Cmd.Flags().String("{{ p.name | flag }}", "", {{ p.description | gostr }})
 	{% endfor %}
+	rootCmd.AddCommand({{ op.operation_id | cmd | goident }}Cmd)
 }

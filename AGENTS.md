@@ -5,7 +5,9 @@
 - Install dev deps: `pip install -e ".[dev]"`
 - Run unit tests: `pytest -q`
 - Lint: `ruff check src tests`
-- Type check (best effort): `mypy src/ducktap`
+- Type check (CI-gated, must pass): `mypy`
+- Compile generated Go/Rust/TS CLIs (needs go, cargo, node):
+  `DUCKTAP_COMPILE_TESTS=1 pytest -q tests/test_generated_multilang.py`
 
 ## End-to-end smoke
 

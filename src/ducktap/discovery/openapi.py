@@ -171,7 +171,7 @@ def _parse_operation(
     op_id = snake_case(op_id_raw)
 
     params: list[Param] = []
-    seen: set[str] = set()
+    seen: set[tuple[Any, Any]] = set()
     for raw in list(path_params) + list(op.get("parameters") or []):
         if not isinstance(raw, dict):
             continue
@@ -185,7 +185,7 @@ def _parse_operation(
         rb = op["requestBody"] or {}
         content = (rb.get("content") or {})
         # prefer JSON
-        media = content.get("application/json") or next(iter(content.values()), {})
+        media: dict[str, Any] = content.get("application/json") or next(iter(content.values()), {})
         schema = (media or {}).get("schema") or {}
         # flatten top-level object properties into individual body params for ergonomics
         props = (schema.get("properties") or {}) if schema.get("type") == "object" else {}
@@ -216,8 +216,8 @@ def _parse_operation(
             continue
         if is_v3:
             content = (rdef.get("content") or {})
-            media = content.get("application/json") or next(iter(content.values()), {})
-            schema = (media or {}).get("schema")
+            rmedia: dict[str, Any] = content.get("application/json") or next(iter(content.values()), {})
+            schema = (rmedia or {}).get("schema")
             ct = next(iter(content.keys()), "application/json") if content else "application/json"
         else:
             schema = rdef.get("schema")
@@ -228,7 +228,7 @@ def _parse_operation(
         ))
 
     security = op.get("security") or []
-    auth = []
+    auth: list[str] = []
     for s in security:
         if isinstance(s, dict):
             auth.extend(s.keys())

@@ -1,17 +1,17 @@
 import {Args, Flags} from '@oclif/core'
-import {BaseCommand} from '../base'
+import {BaseCommand} from '../../base'
 
 export default class {{ op.operation_id | cmd | tsident }} extends BaseCommand {
-  static description = '{{ op.summary or op.description or op.method + " " + op.path }}'
+  static description = {{ (op.summary or op.description or op.method + " " + op.path) | json }}
   static args = {
     {% for p in op.params if p.location == 'path' %}
-    '{{ p.name }}': Args.string({ description: '{{ p.description }}', required: {{ p.required | lower }} }),
+    '{{ p.name }}': Args.string({ description: {{ p.description | json }}, required: {{ p.required | lower }} }),
     {% endfor %}
   }
   static flags = {
     ...BaseCommand.baseFlags,
     {% for p in op.params if p.location in ['query', 'body', 'header'] %}
-    '{{ p.name | flag }}': Flags.{{ 'string' if p.type == 'string' else 'integer' if p.type == 'integer' else 'string' }}({ description: '{{ p.description }}'{% if p.required %}, required: true{% endif %}{% if p.default %}, default: {{ p.default | json }}{% endif %} }),
+    '{{ p.name | flag }}': Flags.{{ 'string' if p.type == 'string' else 'integer' if p.type == 'integer' else 'string' }}({ description: {{ p.description | json }}{% if p.required %}, required: true{% endif %}{% if p.default %}, default: {{ p.default | json }}{% endif %} }),
     {% endfor %}
   }
 

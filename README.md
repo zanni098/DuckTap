@@ -24,12 +24,13 @@ Pressed petstore (19 operations) -> out
   skill:      3 files
 
 Scorecard: 87/100 (B)
-  - coverage:      95  -- 19 operations exposed
-  - documentation: 100 -- 19/19 operations have docs
-  - auth:          100 -- 2 auth scheme(s)
-  - typed_params:  54  -- 29/53 params typed/enum
-  - artifacts:     100 -- 3/3 expected artifact dirs present
-  - naming:        100 -- 19/19 unique operation ids
+  - coverage:           95  -- 19 operations exposed
+  - documentation:      100 -- 19/19 operations have docs
+  - auth:               100 -- 2 auth scheme(s)
+  - typed_params:       54  -- 29/53 params typed/enum
+  - artifacts:          100 -- 3/3 expected artifact dirs present
+  - naming:             100 -- 19/19 unique operation ids
+  - domain_correctness: 72  -- restful=66, responses=100, base_url=50
 ```
 
 **Why deterministic?** DuckTap parses the spec and emits code directly — no model in the
@@ -52,6 +53,12 @@ the traffic when no spec exists, and prints:
 - **TypeScript CLI** (`<api>-dt-ts`) -- oclif-based for Node.js teams.
 - **Go CLI** (`<api>-dt-go`) -- cobra-based, single binary.
 - **Rust CLI** (`<api>-dt-rs`) -- clap-based, single binary distribution.
+
+  Generate any of these with `ducktap press <spec> -t go-cli,rust-cli,typescript-cli`.
+  Each language's generated project is **compiled in CI** (`go build`, `cargo build`,
+  `tsc`) so the templates can't silently drift. As of v0.7.0 all four languages
+  share an **agent-parity bundle**: a `--dry-run` flag, an `agent-context` JSON
+  self-introspection command, and typed exit codes (`3`/`4`/`5`/`7`).
 - **An MCP server** (`<api>-dt-mcp`) -- every operation exposed as an MCP tool, stdio transport, drop into Claude Desktop or Cursor in 60 seconds.
 - **A skill** for Claude Code, Cursor (`.mdc`), and a generic `tools.json` -- so any agent harness can pick up where the others left off.
 - **A scorecard** grading coverage, docs, auth clarity, typed params, artifacts, and naming.
@@ -79,7 +86,11 @@ playwright install chromium
 git clone https://github.com/zanni098/DuckTap
 cd DuckTap
 pip install -e ".[dev]"
-python -m pytest tests/ -q   # 85+ passed
+python -m pytest tests/ -q   # 86 passed; language compile tests skipped by default
+
+# Opt into the heavy compile tests (needs go, cargo, and node installed).
+# These press the fixture into Go/Rust/TS and actually build each project.
+DUCKTAP_COMPILE_TESTS=1 pytest -q tests/test_generated_multilang.py
 ```
 
 </details>
@@ -88,7 +99,7 @@ python -m pytest tests/ -q   # 85+ passed
 
 ```bash
 # 1. Press a built-in catalog entry (no URL needed)
-ducktap catalog list                  # browse 30+ built-in APIs
+ducktap catalog list                  # browse 30 built-in APIs
 ducktap catalog print stripe          # press Stripe CLI + MCP + skill
 
 # 2. From any OpenAPI spec URL
@@ -109,17 +120,18 @@ Running `ducktap press` prints something like:
 
 ```
 Pressed petstore (19 operations) -> ./out
-  python-cli: 10 files
-  mcp-server:  5 files
-  skill:       3 files
+  python-cli: 11 files
+  mcp-server: 5 files
+  skill:      3 files
 
-Scorecard: 92/100 (A)
-  - coverage:      95  -- 19 operations exposed
-  - documentation: 100 -- 19/19 operations have docs
-  - auth:          100 -- 2 auth scheme(s)
-  - typed_params:   54 -- 29/53 params typed/enum
-  - artifacts:     100 -- 3/3 expected artifact dirs present
-  - naming:        100 -- 19/19 unique operation ids
+Scorecard: 87/100 (B)
+  - coverage:           95  -- 19 operations exposed
+  - documentation:      100 -- 19/19 operations have docs
+  - auth:               100 -- 2 auth scheme(s)
+  - typed_params:       54  -- 29/53 params typed/enum
+  - artifacts:          100 -- 3/3 expected artifact dirs present
+  - naming:             100 -- 19/19 unique operation ids
+  - domain_correctness: 72  -- restful=66, responses=100, base_url=50
 ```
 
 What you get under `./out/`:
@@ -130,6 +142,7 @@ out/
 │   ├── pyproject.toml
 │   ├── README.md
 │   ├── petstore_dt_cli/
+│   │   ├── __main__.py
 │   │   ├── main.py
 │   │   ├── commands.py     # one click subcommand per API operation
 │   │   ├── client.py       # httpx + env-var auth + retries

@@ -45,7 +45,11 @@ def crowd_sniff(api_name: str, *, model: str | None = None) -> dict[str, Any]:
 
     # De-duplicate by URL
     seen: set[str] = set()
-    unique = [r for r in raw if not (r["href"] in seen or seen.add(r["href"]))]
+    unique = []
+    for r in raw:
+        if r["href"] not in seen:
+            seen.add(r["href"])
+            unique.append(r)
 
     prompt = (
         f"API: {api_name}\n\n"

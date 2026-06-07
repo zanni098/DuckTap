@@ -1,5 +1,56 @@
 # Changelog
 
+## 0.7.0 -- 2026-06-07
+
+Multi-language generators are now reachable, compile-verified, and share an
+agent-parity command bundle with the Python CLI.
+
+### Added
+
+- **Agent-parity bundle in the Go, Rust, and TypeScript CLIs** — the three
+  non-Python generators now match the Python CLI on the agent-facing basics:
+  - `--dry-run` global flag — prints the assembled request
+    (method/path/url/query) as JSON and exits without calling the API.
+  - `agent-context` command — emits a JSON manifest (cli, version, exit codes,
+    and every operation's command/method/path/summary) so an agent can
+    self-introspect without parsing `--help`.
+  - **Typed exit codes** — `3` (404), `4` (401/403), `5` (other API error),
+    `7` (429) on every command, mapped from the HTTP status.
+  - `--base-url` override flag on all three.
+- `tests/test_generated_multilang.py` — a render-smoke test (always on) plus
+  per-language compile tests gated behind `DUCKTAP_COMPILE_TESTS=1`. The compile
+  tests build each project *and* run `agent-context`, validating the shared
+  manifest shape across languages.
+- A `generated-clis` CI job that builds the generated Go, Rust, and TypeScript
+  projects with their real toolchains on every push.
+- Type checking (`mypy`) is now a required CI step.
+
+### Fixed
+
+- **Go/Rust/TypeScript generators were unreachable.** `autoload_builtins()`
+  never imported them, so `ducktap press -t go-cli|rust-cli|typescript-cli`
+  failed with "unknown target". All three are now registered by default.
+- **TypeScript generator crashed on render** — it referenced an unregistered
+  `json` Jinja filter. Fixed, plus string literals are now JSON-escaped so
+  summaries/descriptions with quotes or newlines can't break the output.
+- **Generated Go CLI did not compile** — `main.go` imported a `cmd` package
+  that did not exist. Reworked to a flat, idiomatic cobra `cmd` package with a
+  real `root.go`/`Execute()`; the HTTP client now decodes array responses.
+- **Generated Rust CLI did not compile** (12 errors) — deduplicated colliding
+  path/body argument fields, fixed borrow-of-temporary in query building,
+  handled array query params, and silenced naming lints. Builds with **zero
+  warnings**; switched reqwest to `rustls` to drop the system-OpenSSL build dep.
+- **Generated TypeScript CLI did not type-check** — fixed the `../base` import
+  depth and added a runnable `bin/run.js` entrypoint.
+
+### Added
+
+- `tests/test_generated_multilang.py` — a render-smoke test (always on) plus
+  per-language compile tests gated behind `DUCKTAP_COMPILE_TESTS=1`.
+- A `generated-clis` CI job that builds the generated Go, Rust, and TypeScript
+  projects with their real toolchains on every push.
+- Type checking (`mypy`) is now a required CI step.
+
 ## 0.6.0 -- 2026-05-26
 
 Multi-language generators + deferred features shipped.

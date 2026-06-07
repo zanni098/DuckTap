@@ -16,7 +16,7 @@ Where they diverge:
 
 ## Feature matrix
 
-| Capability | Printing Press 4.x | DuckTap 0.2.2 | Notes |
+| Capability | Printing Press 4.x | DuckTap 0.7.0 | Notes |
 |---|---|---|---|
 | OpenAPI 2/3 → CLI | ✓ | ✓ | Both via `kin-openapi`/`openapi-spec-validator`. |
 | HAR → CLI | ✓ | ✓ | DuckTap clusters by `(method, generalized_path, host)`. |
@@ -37,7 +37,7 @@ Where they diverge:
 | Vision (LLM screenshot OCR) | ✓ | ⌛ v0.3 | |
 | Plugin system | source fork | entry points | Drop-in PyPI plugins in DuckTap. |
 | Web UI / dashboard | ✗ | ✓ | `ducktap ui`. |
-| Catalog size | 30+ recipes | **17 entries** (v0.2.1) | DuckTap catalog is open YAML; PR to add. |
+| Catalog size | 30+ recipes | **30 entries** (v0.6.0) | DuckTap catalog is open YAML; PR to add. |
 | Tag-grouped command tree (`<api> pet add`) | ✓ | ✓ (v0.2.1) | DuckTap groups by first OpenAPI tag. |
 | `--agent` one-flag mode | ✓ | ✓ (v0.2.1) | Toggles `--json`, `--compact`, `--no-color` atomically. |
 | `--format jsonl/csv/plain` | ✓ | ✓ (v0.2.1) | DuckTap also keeps `--json/--pretty`. |
@@ -47,9 +47,13 @@ Where they diverge:
 | `which <keyword>` operation search | ✓ | ✓ (v0.2.1) | Matches id, raw id, path, and summary. |
 | `auth-doctor` (env-var validation + live probe) | partial (`doctor`) | ✓ (v0.2.2) | DuckTap classifies live response (`auth_works`/`auth_failed`/`rate_limited`/...). |
 | `--agent --dry-run` preserves full request payload | ✓ | ✓ (v0.2.2) | Metadata views skip `--compact`; only response data gets compacted. |
-| Compound query macros | ✓ | ⌛ v0.4 | |
-| Publish to PyPI/GitHub | ✗ | ⌛ v0.5 | |
-| Multi-language CLI output | Go only | Python now; TS/Go/Rust planned v0.6 | |
+| Compound query macros | ✓ | ✓ (v0.4) | |
+| Publish to PyPI/GitHub | ✗ | ✓ (v0.5) | DuckTap `ducktap publish`. |
+| Multi-language CLI output | **Go only** | **Python + Go + TypeScript + Rust** (v0.7) | All four compile in CI; Go=cobra, TS=oclif, Rust=clap. |
+| `--dry-run` in every generated language | Go | ✓ all 4 (v0.7) | Prints the assembled request, no call made. |
+| `agent-context` in every generated language | Go | ✓ all 4 (v0.7) | JSON self-introspection manifest. |
+| Typed exit codes in every generated language | Go | ✓ all 4 (v0.7) | `3`/`4`/`5`/`7` from HTTP status. |
+| Local SQLite mirror + FTS5 in non-Python CLIs | n/a | Python only (Go/TS/Rust: ⌛) | Tracked post-0.7. |
 
 ## When to pick which
 

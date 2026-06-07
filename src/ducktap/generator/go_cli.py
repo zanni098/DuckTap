@@ -5,6 +5,8 @@ command framework.
 """
 from __future__ import annotations
 
+import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +18,15 @@ from ducktap.core.naming import cli_command_name, flag_name
 from ducktap.core.spec import APISpec, Operation, Param
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
+_IDENT_RE = re.compile(r"[^A-Za-z0-9_]+")
+
+
+def _goident(s: str) -> str:
+    """Turn an arbitrary string into a safe Go identifier."""
+    out = _IDENT_RE.sub("", str(s))
+    if out and out[0].isdigit():
+        out = "_" + out
+    return out or "_"
 
 
 def _env() -> Environment:
@@ -60,15 +71,10 @@ class GoCLIGenerator:
         env.filters["flag"] = flag_name
         env.filters["cmd"] = cli_command_name
         env.filters["gotype"] = _go_type
-        import re as _re
-        _ident_re = _re.compile(r"[^A-Za-z0-9_]+")
-
-        def _goident(s: str) -> str:
-            out = _ident_re.sub("", str(s))
-            if out and out[0].isdigit():
-                out = "_" + out
-            return out or "_"
         env.filters["goident"] = _goident
+        # A Go interpreted string literal: JSON encoding escapes quotes,
+        # backslashes, and newlines compatibly.
+        env.filters["gostr"] = lambda v: json.dumps(str(v))
 
         pkg_name = spec.name + "-dt-go"
         mod_name = "github.com/example/" + pkg_name
@@ -95,16 +101,16 @@ class GoCLIGenerator:
         files = [
             ("go_cli/go.mod.j2", root / "go.mod"),
             ("go_cli/main.go.j2", root / "main.go"),
+            ("go_cli/cmd/root.go.j2", cmd / "root.go"),
+            ("go_cli/cmd/agent_context.go.j2", cmd / "agent_context.go"),
             ("go_cli/internal/client.go.j2", internal / "client.go"),
             ("go_cli/README.md.j2", root / "README.md"),
             ("go_cli/.gitignore.j2", root / ".gitignore"),
         ]
-        # One command file per operation (grouped by tag)
+        # One command file per operation, all in a single flat `cmd` package
+        # that registers each subcommand on the shared rootCmd via init().
         for op in spec.operations:
-            tag = (op.tags[0] if op.tags else "general")
-            tag_dir = cmd / cli_command_name(tag)
-            tag_dir.mkdir(parents=True, exist_ok=True)
-            dst = tag_dir / (cli_command_name(op.operation_id) + ".go")
+            dst = cmd / (cli_command_name(op.operation_id) + ".go")
             text = env.get_template("go_cli/cmd/command.go.j2").render(op=op, **ctx)
             dst.write_text(text, encoding="utf-8")
             written.append(str(dst))

@@ -205,7 +205,7 @@ def create_app() -> FastAPI:
                 raise HTTPException(404, f"catalog entry not found: {name}")
             src = entry.source()
             hint = "browser-sniff" if entry.sniff_url else None
-            nm = entry.name
+            nm: str | None = entry.name
         elif source:
             src = source
             hint = None

@@ -1,0 +1,42 @@
+package cmd
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/spf13/cobra"
+
+	"{{ mod_name }}/internal"
+)
+
+var (
+	flagBaseURL string
+	flagDryRun  bool
+)
+
+var rootCmd = &cobra.Command{
+	Use:           "{{ cli_bin }}",
+	Short:         {{ (spec.display_name or spec.name) | gostr }},
+	Long:          {{ (spec.description or spec.display_name or spec.name) | gostr }},
+	SilenceUsage:  true,
+	SilenceErrors: true,
+}
+
+func init() {
+	rootCmd.PersistentFlags().StringVar(&flagBaseURL, "base-url", "", "Override the API base URL")
+	rootCmd.PersistentFlags().BoolVar(&flagDryRun, "dry-run", false, "Print the request without calling the API")
+}
+
+// Execute runs the root command, mapping API errors to typed exit codes
+// (3=not found, 4=auth, 5=API error, 7=rate limited) so agents can branch
+// on the exit status without parsing output.
+func Execute() {
+	if err := rootCmd.Execute(); err != nil {
+		if apiErr, ok := err.(*internal.APIError); ok {
+			fmt.Fprintln(os.Stderr, apiErr.JSON())
+			os.Exit(apiErr.ExitCode())
+		}
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+}

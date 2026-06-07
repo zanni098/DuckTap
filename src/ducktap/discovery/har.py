@@ -9,12 +9,20 @@ import json
 import re
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from urllib.parse import urlparse
 
 from ducktap.core import plugins
 from ducktap.core.naming import operation_id_from_path, slugify
-from ducktap.core.spec import APISpec, AuthScheme, Operation, Param, Response
+from ducktap.core.spec import (
+    APISpec,
+    AuthScheme,
+    AuthType,
+    HTTPMethod,
+    Operation,
+    Param,
+    Response,
+)
 
 # Rate-limit header names (RFC 6585 + common vendor extensions)
 _RATE_LIMIT_HEADERS = [
@@ -84,7 +92,7 @@ def _generalize_path(path: str) -> str:
 
 
 
-_AUTH_PATTERNS = [
+_AUTH_PATTERNS: list[tuple[re.Pattern[str], AuthType, str]] = [
     (re.compile(r'oauth|openid|sso|saml', re.I), 'oauth2', 'OAuth 2.0 / SSO redirect detected'),
     (re.compile(r'login|signin|sign-in|authenticate', re.I), 'apiKey', 'Login page detected -- likely session or API key auth'),
     (re.compile(r'api[_-]?key|x-api-key', re.I), 'apiKey', 'API key header pattern detected'),
@@ -195,7 +203,7 @@ class HARDiscoverer:
         host_counts: dict[str, int] = defaultdict(int)
         for (_, _, host), es in clusters.items():
             host_counts[host] += len(es)
-        host = max(host_counts, key=host_counts.get)
+        host = max(host_counts, key=lambda h: host_counts[h])
         scheme = "https"
         base = f"{scheme}://{host}"
         name = opts.get("name") or slugify(host.split(".")[0])
@@ -236,7 +244,7 @@ class HARDiscoverer:
 
             op_id = operation_id_from_path(method, path)
             spec.operations.append(Operation(
-                operation_id=op_id, method=method, path=path,
+                operation_id=op_id, method=cast(HTTPMethod, method), path=path,
                 summary=f"{method} {path}",
                 params=params,
                 responses=[Response(status="200", description="OK")],
