@@ -12,6 +12,7 @@ command framework. The generated CLI:
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +24,15 @@ from ducktap.core.naming import cli_command_name, flag_name
 from ducktap.core.spec import APISpec, Operation, Param
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
+_IDENT_RE = re.compile(r"[^A-Za-z0-9_]+")
+
+
+def _pyident(s: str) -> str:
+    """Turn an arbitrary string into a safe Python identifier."""
+    out = _IDENT_RE.sub("_", str(s))
+    if out and out[0].isdigit():
+        out = "_" + out
+    return out or "_"
 
 
 def _env() -> Environment:
@@ -78,14 +88,6 @@ class PythonCLIGenerator:
         env.filters["cmd"] = cli_command_name
         env.filters["pytype"] = _python_type
         env.filters["clicktype"] = _click_type
-        import re as _re
-        _ident_re = _re.compile(r"[^A-Za-z0-9_]+")
-
-        def _pyident(s: str) -> str:
-            out = _ident_re.sub("_", str(s))
-            if out and out[0].isdigit():
-                out = "_" + out
-            return out or "_"
         env.filters["pyident"] = _pyident
         # repr() yields a valid Python literal for scalars (True/False/None/...)
         env.filters["pyrepr"] = lambda v: repr(v)

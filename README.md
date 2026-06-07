@@ -24,12 +24,13 @@ Pressed petstore (19 operations) -> out
   skill:      3 files
 
 Scorecard: 87/100 (B)
-  - coverage:      95  -- 19 operations exposed
-  - documentation: 100 -- 19/19 operations have docs
-  - auth:          100 -- 2 auth scheme(s)
-  - typed_params:  54  -- 29/53 params typed/enum
-  - artifacts:     100 -- 3/3 expected artifact dirs present
-  - naming:        100 -- 19/19 unique operation ids
+  - coverage:           95  -- 19 operations exposed
+  - documentation:      100 -- 19/19 operations have docs
+  - auth:               100 -- 2 auth scheme(s)
+  - typed_params:       54  -- 29/53 params typed/enum
+  - artifacts:          100 -- 3/3 expected artifact dirs present
+  - naming:             100 -- 19/19 unique operation ids
+  - domain_correctness: 72  -- restful=66, responses=100, base_url=50
 ```
 
 **Why deterministic?** DuckTap parses the spec and emits code directly — no model in the
@@ -88,7 +89,7 @@ python -m pytest tests/ -q   # 85+ passed
 
 ```bash
 # 1. Press a built-in catalog entry (no URL needed)
-ducktap catalog list                  # browse 30+ built-in APIs
+ducktap catalog list                  # browse 30 built-in APIs
 ducktap catalog print stripe          # press Stripe CLI + MCP + skill
 
 # 2. From any OpenAPI spec URL
@@ -109,17 +110,18 @@ Running `ducktap press` prints something like:
 
 ```
 Pressed petstore (19 operations) -> ./out
-  python-cli: 10 files
-  mcp-server:  5 files
-  skill:       3 files
+  python-cli: 11 files
+  mcp-server: 5 files
+  skill:      3 files
 
-Scorecard: 92/100 (A)
-  - coverage:      95  -- 19 operations exposed
-  - documentation: 100 -- 19/19 operations have docs
-  - auth:          100 -- 2 auth scheme(s)
-  - typed_params:   54 -- 29/53 params typed/enum
-  - artifacts:     100 -- 3/3 expected artifact dirs present
-  - naming:        100 -- 19/19 unique operation ids
+Scorecard: 87/100 (B)
+  - coverage:           95  -- 19 operations exposed
+  - documentation:      100 -- 19/19 operations have docs
+  - auth:               100 -- 2 auth scheme(s)
+  - typed_params:       54  -- 29/53 params typed/enum
+  - artifacts:          100 -- 3/3 expected artifact dirs present
+  - naming:             100 -- 19/19 unique operation ids
+  - domain_correctness: 72  -- restful=66, responses=100, base_url=50
 ```
 
 What you get under `./out/`:
@@ -130,6 +132,7 @@ out/
 │   ├── pyproject.toml
 │   ├── README.md
 │   ├── petstore_dt_cli/
+│   │   ├── __main__.py
 │   │   ├── main.py
 │   │   ├── commands.py     # one click subcommand per API operation
 │   │   ├── client.py       # httpx + env-var auth + retries

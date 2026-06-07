@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 HTTPMethod = Literal["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
 ParamLocation = Literal["path", "query", "header", "body", "cookie"]
+AuthType = Literal["apiKey", "http", "oauth2", "openIdConnect", "none"]
 
 
 class Param(BaseModel):
@@ -58,7 +59,7 @@ class Operation(BaseModel):
 
 class AuthScheme(BaseModel):
     name: str
-    type: Literal["apiKey", "http", "oauth2", "openIdConnect", "none"] = "apiKey"
+    type: AuthType = "apiKey"
     location: Literal["header", "query", "cookie"] = "header"
     parameter_name: str = "Authorization"
     scheme: str = "bearer"  # for http auth: "basic", "bearer"

@@ -5,7 +5,7 @@
 - Install dev deps: `pip install -e ".[dev]"`
 - Run unit tests: `pytest -q`
 - Lint: `ruff check src tests`
-- Type check (best effort): `mypy src/ducktap`
+- Type check (CI-gated, must pass): `mypy`
 
 ## End-to-end smoke
 
