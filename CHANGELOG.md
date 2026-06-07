@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — v0.7.x (The Creative Layer)
+
+Development version opened after the 0.7.0 release. Planned scope is tracked in
+[`docs/ROADMAP.md`](docs/ROADMAP.md) under **v0.7.x — The Creative Layer**:
+Non-Obvious Insight (NOI) generation, the ecosystem absorb gate, domain
+archetype detection, typed per-resource SQLite tables, and the `.ducktap.json`
+provenance manifest.
+
 ## 0.7.0 -- 2026-06-07
 
 Multi-language generators are now reachable, compile-verified, and share an
