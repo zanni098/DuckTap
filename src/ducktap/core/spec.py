@@ -80,6 +80,9 @@ class APISpec(BaseModel):
     auth_schemes: list[AuthScheme] = Field(default_factory=list)
     source: dict[str, Any] = Field(default_factory=dict)  # provenance: discovery method + source
     extensions: dict[str, Any] = Field(default_factory=dict)  # vendor extensions
+    # v0.7.x Creative Layer:
+    archetype: str = "unknown"  # detected domain archetype (see core.archetype)
+    insight: str = ""           # Non-Obvious Insight (NOI) for this API
 
     def by_tag(self) -> dict[str, list[Operation]]:
         groups: dict[str, list[Operation]] = {}
