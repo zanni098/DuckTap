@@ -33,6 +33,13 @@ def _mirror_dir() -> Path:
     return p
 
 
+def _scalar(value: Any) -> Any:
+    """Coerce a value for a typed table cell: JSON-encode containers, pass scalars."""
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, default=str)
+    return value
+
+
 class _SQLiteBackend:
     """sqlite3-backed mirror with FTS5 full-text search."""
 
@@ -101,6 +108,32 @@ class _SQLiteBackend:
                 VALUES ('delete', old.id, old.collection, old.method, old.path, old.url, old.body);
             END
         """)
+        {% if archetype_table %}
+        # Typed per-resource table for the "{{ spec.archetype }}" archetype, with an
+        # FTS5 index over the natural text column ("{{ archetype_text_col }}").
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS {{ archetype_table }} (
+                {% for c in archetype_cols %}{{ c.name }} {{ c.type }}{{ "," if not loop.last else "" }}
+                {% endfor %}
+            )
+        """)
+        self.conn.execute(
+            "CREATE VIRTUAL TABLE IF NOT EXISTS {{ archetype_table }}_fts "
+            "USING fts5({{ archetype_text_col }}, content='{{ archetype_table }}', content_rowid='rowid')"
+        )
+        self.conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS {{ archetype_table }}_ai AFTER INSERT ON {{ archetype_table }} BEGIN
+                INSERT INTO {{ archetype_table }}_fts(rowid, {{ archetype_text_col }})
+                VALUES (new.rowid, new.{{ archetype_text_col }});
+            END
+        """)
+        self.conn.execute("""
+            CREATE TRIGGER IF NOT EXISTS {{ archetype_table }}_ad AFTER DELETE ON {{ archetype_table }} BEGIN
+                INSERT INTO {{ archetype_table }}_fts({{ archetype_table }}_fts, rowid, {{ archetype_text_col }})
+                VALUES ('delete', old.rowid, old.{{ archetype_text_col }});
+            END
+        """)
+        {% endif %}
 
 
 class _DuckDBBackend:
@@ -142,6 +175,16 @@ class _DuckDBBackend:
             )
         """)
         # DuckDB doesn't support FTS5, but we can create an INVERTED INDEX-like query
+        {% if archetype_table %}
+        # Typed per-resource table for the "{{ spec.archetype }}" archetype.
+        # DuckDB has no FTS5, so domain search falls back to LIKE on "{{ archetype_text_col }}".
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS {{ archetype_table }} (
+                {% for c in archetype_cols %}{{ c.name }} {{ c.type }}{{ "," if not loop.last else "" }}
+                {% endfor %}
+            )
+        """)
+        {% endif %}
 
 
 class Mirror:
@@ -242,6 +285,85 @@ class Mirror:
             }
             for row in rows
         ]
+
+    {% if archetype_table %}
+    # --- Typed "{{ spec.archetype }}" domain table ({{ archetype_table }}) ---
+
+    _DOMAIN_COLS = [{% for c in archetype_cols %}"{{ c.name }}"{{ ", " if not loop.last else "" }}{% endfor %}]
+    _DOMAIN_TEXT_COL = "{{ archetype_text_col }}"
+    _DOMAIN_TS_COL = "{{ archetype_ts_col }}"
+
+    def upsert_domain(self, rows: Any) -> int:
+        """Insert/replace typed {{ archetype_table }} rows from API dicts.
+
+        Unknown keys are ignored; nested values are JSON-encoded. This is the
+        typed alternative to the generic save_record/domain_entities blob.
+        """
+        items = rows if isinstance(rows, list) else [rows]
+        cols = self._DOMAIN_COLS
+        placeholders = ", ".join("?" for _ in cols)
+        sql = f"INSERT OR REPLACE INTO {{ archetype_table }}({', '.join(cols)}) VALUES ({placeholders})"
+        data = [
+            tuple(_scalar(r.get(c)) for c in cols)
+            for r in items if isinstance(r, dict)
+        ]
+        if not data:
+            return 0
+        self._db.executemany(sql, data)
+        self._db.commit()
+        return len(data)
+
+    def search_domain(self, text: str, limit: int = 20) -> list[dict[str, Any]]:
+        """Search the natural text column (FTS5 on sqlite3, LIKE on duckdb)."""
+        if self.backend_name == "duckdb":
+            cur = self._db.execute(
+                f"SELECT * FROM {{ archetype_table }} WHERE {self._DOMAIN_TEXT_COL} LIKE ? LIMIT ?",
+                (f"%{text}%", limit),
+            )
+        else:
+            try:
+                cur = self._db.execute(
+                    "SELECT t.* FROM {{ archetype_table }}_fts f "
+                    "JOIN {{ archetype_table }} t ON f.rowid = t.rowid "
+                    "WHERE {{ archetype_table }}_fts MATCH ? ORDER BY rank LIMIT ?",
+                    (text, limit),
+                )
+            except Exception:
+                cur = self._db.execute(
+                    f"SELECT * FROM {{ archetype_table }} WHERE {self._DOMAIN_TEXT_COL} LIKE ? LIMIT ?",
+                    (f"%{text}%", limit),
+                )
+        cols = [d[0] for d in (cur.description or [])]
+        return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
+
+    def domain_since(self, since: str, limit: int = 100) -> list[dict[str, Any]]:
+        """Rows whose {{ archetype_ts_col }} is >= the given ISO timestamp (incremental sync)."""
+        cur = self._db.execute(
+            f"SELECT * FROM {{ archetype_table }} WHERE {self._DOMAIN_TS_COL} >= ? "
+            f"ORDER BY {self._DOMAIN_TS_COL} DESC LIMIT ?",
+            (since, limit),
+        )
+        cols = [d[0] for d in (cur.description or [])]
+        return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
+    {% endif %}
+
+    def cursor_path(self) -> Path:
+        return _mirror_dir() / "cursor.json"
+
+    def get_cursor(self) -> str | None:
+        """Last incremental-sync cursor (ISO timestamp), if any."""
+        p = self.cursor_path()
+        if not p.exists():
+            return None
+        try:
+            return json.loads(p.read_text()).get("since")
+        except Exception:
+            return None
+
+    def set_cursor(self, since: str) -> None:
+        p = self.cursor_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps({"since": since}))
 
     def close(self) -> None:
         self._db.close()

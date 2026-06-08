@@ -399,6 +399,8 @@ def register(cli: click.Group) -> None:
             "display_name": "{{ spec.display_name or spec.name }}",
             "version": "{{ spec.version }}",
             "ducktap_version": "{{ ducktap_version }}",
+            "archetype": "{{ spec.archetype }}",
+            "insight": {{ (spec.insight or "") | tojson }},
             "base_url": client.base_url,
             "auth_env_vars": [{% for s in spec.auth_schemes %}"{{ s.env_var }}",{% endfor %}],
             "global_flags": [
