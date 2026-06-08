@@ -180,10 +180,10 @@ over) Printing Press.
 | `emboss` brand-stamp | ✅ landed v0.6.0 |
 | `vision` LLM screenshot reading | ✅ landed v0.6.0 |
 | 30+ catalog entries | ✅ landed v0.6.0 (30 entries) |
-| Non-Obvious Insight (NOI) generation | ⏳ v0.7.x |
-| Ecosystem absorb gate | ⏳ v0.7.x |
-| Domain archetypes (5 archetypes, typed commands) | ⏳ v0.7.x |
-| True domain-specific SQLite (typed per-resource tables) | ⏳ v0.7.x |
+| Non-Obvious Insight (NOI) generation | ✅ landed v0.8.0 |
+| Ecosystem absorb gate | ✅ landed v0.8.0 |
+| Domain archetypes (5 archetypes, typed commands) | ✅ landed v0.8.0 |
+| True domain-specific SQLite (typed per-resource tables) | ✅ landed v0.8.0 |
 | Proof of behavior (4 mechanical proofs) | ⏳ v0.8 |
 | Rung 5 behavioral insights (`similar`, `trends`, `forecast`) | ⏳ v0.8 |
 | Cursor-based incremental sync | ⏳ v0.8 |
@@ -240,62 +240,82 @@ compound query commands) is tracked for a later release.
 
 ---
 
-## v0.7.x — The Creative Layer (planned)
+## v0.7.x — The Creative Layer ✓ (shipped in 0.8.0)
 
 The single most important gap between DuckTap and Printing Press is not features — it is
 creative depth. PP generates CLIs *around an insight*. DuckTap generates CLIs *from a spec*.
-v0.7 closes that conceptual gap and rewires the press pipeline to front-load research
-the way PP's Phase 0–1.5 does.
+v0.7.x closes that conceptual gap and front-loads research in the press pipeline.
+Everything below is implemented **deterministically** (no API key required) so it runs
+in CI, with optional LLM enrichment when a LiteLLM model is configured.
 
 ### Non-Obvious Insight (NOI)
 
-- [ ] `ducktap insight <api>` — standalone command that produces a one-sentence NOI for an API:
+- [x] `ducktap insight <api>` — standalone command that produces a one-sentence NOI:
   `"[API] isn't just [obvious thing]. It's [non-obvious thing]. Every [data point] is a signal about [hidden truth]."`
-- [ ] NOI is generated in Phase 0 of `ducktap press` and written to `<out>/<name>/.ducktap.json` provenance manifest
-- [ ] `ducktap press` blocks (with a warning, not a hard fail) if the LLM cannot generate a convincing NOI, prompting the user to supply one with `--insight "..."`
-- [ ] NOI is embedded in the generated CLI's README and `agent-context` output so agents understand the CLI's purpose
+- [x] NOI is generated in Phase 0 of `ducktap press` and written to the `.ducktap.json` provenance manifest
+- [x] A NOI is always available: a deterministic archetype-driven template is produced (and
+  used as the LLM seed); `--insight "..."` overrides it. (Supersedes the "block with a warning"
+  design — generation never fails for lack of a NOI.)
+- [x] NOI is embedded in the generated CLI's README and `agent-context` output
 
 ### Ecosystem Absorb Gate
 
-- [ ] Extends crowd-sniff into a generation gate. Before generating, `ducktap press` runs an absorb pass that catalogs every feature found in the top 5 community CLIs/MCPs for the target API into an **absorb manifest** (`<out>/<name>/research/absorb-manifest.json`)
-- [ ] Absorb manifest is a structured list: `{feature, source_tool, source_url, priority}` with every feature the top competitor has classified as `must_match` or `transcend`
-- [ ] LLM suggests novel features missing from the entire ecosystem (stored as `novel_suggestions` in the manifest)
-- [ ] Generated CLI must match every `must_match` feature before `ducktap scorecard` can pass
-- [ ] `ducktap absorb <api>` — run the absorb gate standalone, emit the manifest without generating
+- [x] `ducktap absorb <api>` catalogs the agent-CLI features the API should have into an
+  **absorb manifest** (deterministic agent-CLI-playbook baseline + crowd-sniff enrichment)
+- [x] Absorb manifest is a structured list: `{feature, source_tool, source_url, priority}` with
+  each feature classified `must_match` or `transcend`
+- [x] LLM/crowd-sniff suggestions are stored as `novel_suggestions` in the manifest
+- [x] `ducktap absorb --check <dir>` mechanically verifies a generated CLI matches every
+  `must_match` feature (scans the source; exits non-zero on a miss)
+- [x] `ducktap absorb <api>` runs standalone and emits the manifest with `-o`
 
 ### Domain Archetypes
 
-Five initial archetypes auto-detected from the spec (expandable to 8+ in v1.0). Each archetype generates a typed data layer and the right workflow + insight commands.
+Five archetypes auto-detected from the spec. Each drives a typed data layer.
 
-- [ ] **Archetype detector** (`src/ducktap/verify/archetype.py`) — classifies any APISpec into one of 5 initial archetypes based on resource names, field names, and HTTP patterns:
+- [x] **Archetype detector** (`src/ducktap/core/archetype.py`) — classifies any APISpec into
+  one of 5 archetypes from resource + field signals:
   - `project_management` — issue/task/ticket resources, assignee, priority, state fields
   - `communication` — message/channel/thread resources, threading fields, timestamps
   - `payments` — charge/payment/invoice resources, amount, currency, status fields
   - `infrastructure` — server/deploy/instance resources, region, status fields
   - `content` — document/page/block resources, content, version fields
-- [ ] Detected archetype is stored in `APISpec.archetype` and in `.ducktap.json`
-- [ ] Python CLI generator switches template context based on archetype, generating the right `sync`, `search`, `sql`, and workflow commands for each one
-- [ ] `ducktap press --archetype project_management` — manual override
+- [x] Detected archetype is stored in `APISpec.archetype` and in `.ducktap.json`
+- [x] Python CLI generator switches template context based on archetype (typed tables + FTS5)
+- [x] `ducktap press --archetype project_management` — manual override
 
 ### True Domain-Specific SQLite Tables
 
-Replaces the generic `domain_entities` JSON-blob table with typed per-resource tables per archetype. This unlocks Rung 5 commands in v0.8.
+Adds typed per-resource tables per archetype alongside the generic mirror.
 
-- [ ] `mirror.py.j2` gains archetype-aware table generation:
-  - `project_management` → `issues (id, title, status, assignee, priority, created_at, updated_at, body TEXT)`
-  - `communication` → `messages (id, channel_id, author_id, content TEXT, timestamp, thread_id)`
-  - `payments` → `charges (id, amount, currency, status, customer_id, created_at, description TEXT)`
-  - `infrastructure` → `resources (id, name, type, status, region, created_at, metadata TEXT)`
-  - `content` → `documents (id, title, content TEXT, author_id, updated_at, parent_id)`
-- [ ] Each archetype gets typed `UpsertX()` and `SearchX()` methods (not generic `save_record`)
-- [ ] FTS5 virtual table indexes the natural text column for each archetype (content, title, body, etc.)
-- [ ] DuckDB backend gets equivalent typed tables
-- [ ] `--since <ISO-date>` flag on `sync` for incremental updates (stores last cursor in `~/.ducktap/<api>/cursor.json`)
+- [x] `mirror.py.j2` gains archetype-aware table generation:
+  - `project_management` → `issues (id, title, status, assignee, priority, created_at, updated_at, body)`
+  - `communication` → `messages (id, channel_id, author_id, content, timestamp, thread_id)`
+  - `payments` → `charges (id, amount, currency, status, customer_id, created_at, description)`
+  - `infrastructure` → `resources (id, name, type, status, region, created_at, metadata)`
+  - `content` → `documents (id, title, content, author_id, updated_at, parent_id)`
+- [x] Typed `upsert_domain()` / `search_domain()` methods (not generic `save_record`)
+- [x] FTS5 virtual table indexes the natural text column for each archetype
+- [x] DuckDB backend gets equivalent typed tables (LIKE search; DuckDB has no FTS5)
+- [x] `domain_since(<ISO-date>)` incremental filter + sync cursor persisted to `cursor.json`
 
 ### Provenance Manifest
 
-- [ ] Every `ducktap press` run writes `<out>/<name>/.ducktap.json` containing: NOI, archetype, absorb manifest summary, source URL, spec hash, ducktap version, generation timestamp, scorecard grade
-- [ ] `ducktap info <name>` reads and pretty-prints the manifest
+- [x] Every `ducktap press` run writes `.ducktap.json`: NOI, archetype, source, spec checksum,
+  ducktap version, generation timestamp, scorecard grade, targets, auth env vars
+- [x] `ducktap info` reads and pretty-prints the manifest
+
+### Scoping notes (0.8.0)
+
+Where the implementation differs from the literal text above:
+
+- The provenance manifest is written to `<out>/.ducktap.json` (one per press) and read by
+  `ducktap info --out-dir`, rather than `<out>/<name>/.ducktap.json` / `ducktap info <name>`.
+- The absorb `must_match` gate is enforced via `ducktap absorb --check` (a standalone mechanical
+  gate), not yet wired into the `ducktap scorecard` command itself.
+- Typed tables ship with mirror-level `upsert_domain`/`search_domain`/`domain_since` + cursor
+  persistence. Wiring a dedicated `sync --since` *subcommand* into every generated CLI (and the
+  archetype-specific `sql`/workflow commands) is deferred to v0.8.0's Rung 5 work.
 
 ---
 

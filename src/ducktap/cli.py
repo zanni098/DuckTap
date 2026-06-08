@@ -64,18 +64,29 @@ def press_cmd(
         "python-cli,mcp-server,skill", "--targets", "-t",
         help="Comma-separated targets to generate.",
     ),
+    archetype: str | None = typer.Option(
+        None, "--archetype", help="Override the detected domain archetype."),
+    insight: str | None = typer.Option(
+        None, "--insight", help="Supply the Non-Obvious Insight instead of generating one."),
+    no_llm: bool = typer.Option(
+        False, "--no-llm", help="Skip LLM steps; use the deterministic NOI only."),
 ) -> None:
     """One-shot: discover and generate (the default `printing-press` flow)."""
     tgts = [t.strip() for t in targets.split(",") if t.strip()]
-    result = press(source, str(out), hint=hint, targets=tgts, name=name)
+    result = press(source, str(out), hint=hint, targets=tgts, name=name,
+                   archetype=archetype, insight=insight, use_llm=not no_llm)
     sc = score(result.spec, str(out))
     console.print(f"[bold green]Pressed[/] [bold]{result.spec.name}[/] "
                   f"({len(result.spec.operations)} operations) -> [cyan]{out}[/]")
+    console.print(f"  [magenta]archetype[/]: {result.spec.archetype}")
+    console.print(f"  [magenta]insight[/]: {result.spec.insight}")
     for tgt, files in result.artifacts.items():
         console.print(f"  [yellow]{tgt}[/]: {len(files)} files")
     console.print(f"\n[bold]Scorecard[/]: {sc.overall}/100 ({sc.grade})")
     for s in sc.scores:
         console.print(f"  - {s.dimension}: {s.score} -- {s.notes}")
+    console.print("[dim]Wrote provenance manifest -> "
+                  f"{Path(out) / '.ducktap.json'}[/]")
 
 
 # (no alias needed; the command is named "press" directly)
@@ -97,6 +108,92 @@ def research(
         console.print(f"[green]Wrote[/] {out_json}")
     else:
         typer.echo(text)
+
+
+@app.command()
+def insight(
+    source: str = typer.Argument(..., help="OpenAPI URL/file, HAR file, or .apispec.json"),
+    name: str | None = typer.Option(None, "--name", "-n"),
+    no_llm: bool = typer.Option(False, "--no-llm", help="Deterministic NOI only."),
+    model: str | None = typer.Option(None, "--model", help="LiteLLM model override"),
+) -> None:
+    """Generate a one-sentence Non-Obvious Insight (NOI) for an API."""
+    from ducktap.core.archetype import detect_archetype
+    from ducktap.insight import generate_noi
+    if source.endswith(".json") and Path(source).exists():
+        from ducktap.core.spec import APISpec
+        spec = APISpec.model_validate_json(Path(source).read_text(encoding="utf-8"))
+    else:
+        spec = discover(source, name=name)
+    spec.archetype = detect_archetype(spec)
+    noi = generate_noi(spec, model=model, use_llm=not no_llm)
+    console.print(f"[magenta]archetype[/]: {spec.archetype}")
+    console.print(f"[bold]{noi}[/]")
+
+
+@app.command()
+def absorb(
+    api_name: str = typer.Argument(..., help="API or service name to research"),
+    out: Path | None = typer.Option(None, "--out", "-o",
+                                    help="Write the absorb manifest JSON here."),
+    no_llm: bool = typer.Option(False, "--no-llm", help="Deterministic baseline only."),
+    check: Path | None = typer.Option(None, "--check",
+                                      help="Verify a generated CLI dir against must_match features."),
+    name: str | None = typer.Option(None, "--name", help="CLI slug for --check (defaults to api_name)."),
+    model: str | None = typer.Option(None, "--model"),
+) -> None:
+    """Catalog the agent-CLI features an API should have (the absorb gate)."""
+    from ducktap.absorb import absorb_check, build_absorb_manifest
+    manifest = build_absorb_manifest(api_name, model=model, use_llm=not no_llm)
+    must = [f["feature"] for f in manifest["features"] if f["priority"] == "must_match"]
+    console.print(f"[bold]{api_name}[/] absorb manifest: "
+                  f"{len(manifest['features'])} features ({len(must)} must_match)")
+    table = Table(title="Expected features")
+    table.add_column("feature")
+    table.add_column("priority")
+    for f in manifest["features"]:
+        table.add_row(f["feature"], f["priority"])
+    console.print(table)
+    if out:
+        out.write_text(json.dumps(manifest, indent=2, default=str), encoding="utf-8")
+        console.print(f"[green]Wrote[/] {out}")
+    if check is not None:
+        result = absorb_check(str(check), name or api_name, manifest)
+        if result["passed"]:
+            console.print(f"[green]absorb gate PASSED[/] -- matched all "
+                          f"{len(result['matched'])} must_match features")
+        else:
+            console.print(f"[red]absorb gate FAILED[/] -- missing: "
+                          f"{', '.join(result['missing'])}")
+            raise typer.Exit(5)
+
+
+@app.command()
+def info(
+    out_dir: Path = typer.Option(Path("./out"), "--out-dir", "-o",
+                                 help="Directory containing a .ducktap.json manifest."),
+    json_out: bool = typer.Option(False, "--json", help="Emit raw manifest JSON."),
+) -> None:
+    """Read and pretty-print the provenance manifest from a press run."""
+    from ducktap.manifest import read_manifest
+    manifest = read_manifest(str(out_dir))
+    if manifest is None:
+        console.print(f"[red]No .ducktap.json found in {out_dir}[/]")
+        raise typer.Exit(10)
+    if json_out:
+        typer.echo(json.dumps(manifest, indent=2, default=str))
+        return
+    console.print(f"[bold]{manifest.get('display_name', manifest['name'])}[/] "
+                  f"([cyan]{manifest['name']}[/])")
+    console.print(f"  archetype:      {manifest.get('archetype')}")
+    console.print(f"  insight:        {manifest.get('insight')}")
+    console.print(f"  ducktap:        v{manifest.get('ducktap_version')}")
+    console.print(f"  operations:     {manifest.get('operation_count')}")
+    console.print(f"  targets:        {', '.join(manifest.get('targets', []))}")
+    console.print(f"  spec checksum:  {manifest.get('spec_checksum')}")
+    sc = manifest.get("scorecard") or {}
+    console.print(f"  scorecard:      {sc.get('overall')}/100 ({sc.get('grade')})")
+    console.print(f"  generated at:   {manifest.get('generated_at')}")
 
 
 @app.command()

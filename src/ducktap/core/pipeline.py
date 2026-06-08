@@ -14,6 +14,7 @@ class PressResult:
     spec: APISpec
     out_dir: str
     artifacts: dict[str, list[str]] = field(default_factory=dict)
+    manifest: dict[str, Any] = field(default_factory=dict)
 
 
 def discover(source: str, *, hint: str | None = None, **opts: Any) -> APISpec:
@@ -40,11 +41,26 @@ def press(
     hint: str | None = None,
     targets: list[str] | None = None,
     name: str | None = None,
+    archetype: str | None = None,
+    insight: str | None = None,
+    use_llm: bool = True,
     **opts: Any,
 ) -> PressResult:
-    """One-shot: discover then generate all default targets."""
+    """One-shot: discover then generate all default targets.
+
+    Phase 0 (Creative Layer): detect the domain archetype and generate a
+    Non-Obvious Insight before generation, then write a `.ducktap.json`
+    provenance manifest alongside the artifacts.
+    """
     plugins.autoload_builtins()
     spec = discover(source, hint=hint, name=name, **opts)
+
+    # Phase 0: archetype + NOI
+    from ducktap.core.archetype import detect_archetype
+    from ducktap.insight import generate_noi
+    spec.archetype = archetype or detect_archetype(spec)
+    spec.insight = generate_noi(spec, override=insight, use_llm=use_llm)
+
     targets = targets or ["python-cli", "mcp-server", "skill"]
     gens = plugins.get_generators()
     Path(out_dir).mkdir(parents=True, exist_ok=True)
@@ -56,4 +72,19 @@ def press(
         files = gens[t].generate(spec, out_dir, **opts)
         plugins.emit("generate.done", target=t, files=files)
         artifacts[t] = files
-    return PressResult(spec=spec, out_dir=out_dir, artifacts=artifacts)
+
+    # Provenance manifest (best-effort; never fail the press over it).
+    manifest: dict[str, Any] = {}
+    try:
+        from ducktap.manifest import build_manifest, write_manifest
+        from ducktap.verify.scorecard import score
+        sc = score(spec, out_dir)
+        manifest = build_manifest(
+            spec, targets=list(targets),
+            scorecard_grade=sc.grade, scorecard_overall=sc.overall,
+        )
+        write_manifest(out_dir, manifest)
+    except Exception as e:  # noqa: BLE001
+        plugins.emit("manifest.error", error=e)
+
+    return PressResult(spec=spec, out_dir=out_dir, artifacts=artifacts, manifest=manifest)

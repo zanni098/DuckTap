@@ -26,6 +26,59 @@ from ducktap.core.spec import APISpec, Operation, Param
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 _IDENT_RE = re.compile(r"[^A-Za-z0-9_]+")
 
+# Typed per-resource tables per archetype: (table, [(col, type)], text_col, ts_col).
+# Drives the domain-specific SQLite tables + FTS5 in the generated mirror.
+_ARCHETYPE_TABLES: dict[str, tuple[str, list[tuple[str, str]], str, str]] = {
+    "project_management": (
+        "issues",
+        [("id", "TEXT PRIMARY KEY"), ("title", "TEXT"), ("status", "TEXT"),
+         ("assignee", "TEXT"), ("priority", "TEXT"), ("created_at", "TEXT"),
+         ("updated_at", "TEXT"), ("body", "TEXT")],
+        "title", "updated_at",
+    ),
+    "communication": (
+        "messages",
+        [("id", "TEXT PRIMARY KEY"), ("channel_id", "TEXT"), ("author_id", "TEXT"),
+         ("content", "TEXT"), ("timestamp", "TEXT"), ("thread_id", "TEXT")],
+        "content", "timestamp",
+    ),
+    "payments": (
+        "charges",
+        [("id", "TEXT PRIMARY KEY"), ("amount", "REAL"), ("currency", "TEXT"),
+         ("status", "TEXT"), ("customer_id", "TEXT"), ("created_at", "TEXT"),
+         ("description", "TEXT")],
+        "description", "created_at",
+    ),
+    "infrastructure": (
+        "resources",
+        [("id", "TEXT PRIMARY KEY"), ("name", "TEXT"), ("type", "TEXT"),
+         ("status", "TEXT"), ("region", "TEXT"), ("created_at", "TEXT"),
+         ("metadata", "TEXT")],
+        "name", "created_at",
+    ),
+    "content": (
+        "documents",
+        [("id", "TEXT PRIMARY KEY"), ("title", "TEXT"), ("content", "TEXT"),
+         ("author_id", "TEXT"), ("updated_at", "TEXT"), ("parent_id", "TEXT")],
+        "content", "updated_at",
+    ),
+}
+
+
+def _archetype_table_ctx(archetype: str) -> dict[str, Any]:
+    """Template context describing the archetype's typed table (or empty)."""
+    entry = _ARCHETYPE_TABLES.get(archetype)
+    if not entry:
+        return {"archetype_table": None}
+    table, cols, text_col, ts_col = entry
+    return {
+        "archetype_table": table,
+        "archetype_cols": [{"name": n, "type": t} for n, t in cols],
+        "archetype_col_names": [n for n, _ in cols],
+        "archetype_text_col": text_col,
+        "archetype_ts_col": ts_col,
+    }
+
 
 def _pyident(s: str) -> str:
     """Turn an arbitrary string into a safe Python identifier."""
@@ -109,6 +162,7 @@ class PythonCLIGenerator:
             "query_params": _query_params,
             "body_params": _body_params,
             "header_params": _header_params,
+            **_archetype_table_ctx(spec.archetype),
         }
         written: list[str] = []
 
