@@ -16,8 +16,13 @@ Where they diverge:
 
 ## Feature matrix
 
-| Capability | Printing Press 4.x | DuckTap 0.7.0 | Notes |
+| Capability | Printing Press 4.x | DuckTap 0.8.0 | Notes |
 |---|---|---|---|
+| Non-Obvious Insight (NOI) | ✓ (LLM) | ✓ (v0.8) | DuckTap: archetype-driven deterministic NOI + optional LLM; `ducktap insight`. |
+| Domain archetype detection | ✓ | ✓ (v0.8) | 5 archetypes, deterministic; drives typed tables. |
+| Ecosystem absorb gate | ✓ | ✓ (v0.8) | `ducktap absorb` + `--check` mechanical must_match gate. |
+| Typed per-resource SQLite tables | ✓ | ✓ (v0.8) | Per-archetype table + FTS5 over the natural text column. |
+| Provenance manifest | ✓ | ✓ (v0.8) | `.ducktap.json`; read by `ducktap info`. |
 | OpenAPI 2/3 → CLI | ✓ | ✓ | Both via `kin-openapi`/`openapi-spec-validator`. |
 | HAR → CLI | ✓ | ✓ | DuckTap clusters by `(method, generalized_path, host)`. |
 | Browser-sniff → CLI | ✓ (custom) | ✓ (Playwright) | DuckTap exposes raw Playwright actions for scripting. |

@@ -1,12 +1,45 @@
 # Changelog
 
-## Unreleased — v0.7.x (The Creative Layer)
+## 0.8.0 -- 2026-06-08
 
-Development version opened after the 0.7.0 release. Planned scope is tracked in
-[`docs/ROADMAP.md`](docs/ROADMAP.md) under **v0.7.x — The Creative Layer**:
-Non-Obvious Insight (NOI) generation, the ecosystem absorb gate, domain
-archetype detection, typed per-resource SQLite tables, and the `.ducktap.json`
-provenance manifest.
+The **Creative Layer** (the v0.7.x roadmap) lands. Press now front-loads a
+research phase: it detects a domain archetype, generates a Non-Obvious Insight,
+and emits a provenance manifest. All of it is deterministic (no API key needed)
+so it runs in CI, with optional LLM enrichment.
+
+### Added
+
+- **Domain archetype detection** (`core/archetype.py`) — classifies any APISpec
+  into `project_management` / `communication` / `payments` / `infrastructure` /
+  `content` (or `unknown`) from resource + field signals. Stored on
+  `APISpec.archetype`; override with `ducktap press --archetype`.
+- **Non-Obvious Insight (NOI)** (`insight.py`) — `ducktap insight <api>` plus a
+  Phase-0 step in `press`. Archetype-driven deterministic templates, optionally
+  sharpened by an LLM; `--insight "..."` / `--no-llm` control it. The NOI is
+  embedded in the generated README and `agent-context` output.
+- **Provenance manifest** (`manifest.py`) — every `press` writes `.ducktap.json`
+  (NOI, archetype, source, spec checksum, version, timestamp, scorecard grade,
+  targets, auth env vars). `ducktap info` reads and pretty-prints it.
+- **Ecosystem absorb gate** (`absorb.py`) — `ducktap absorb <api>` emits a
+  structured feature manifest (`must_match` / `transcend`) from the agent-CLI
+  playbook baseline + crowd-sniff enrichment. `ducktap absorb --check <dir>`
+  mechanically verifies a generated CLI matches every `must_match` feature.
+- **Typed per-resource SQLite tables** in the generated Python CLI — an
+  archetype-specific table (`issues` / `messages` / `charges` / `resources` /
+  `documents`) with `upsert_domain()` / `search_domain()`, an FTS5 index over
+  the natural text column, a `domain_since()` incremental filter, and a sync
+  cursor persisted to `cursor.json`. DuckDB gets the typed table with a LIKE
+  fallback.
+
+### Notes
+
+- See `docs/ROADMAP.md` → "v0.7.x — The Creative Layer → Scoping notes (0.8.0)"
+  for where the implementation deviates from the literal roadmap text (manifest
+  path, absorb gate surfaced via `absorb --check` rather than wired into
+  `scorecard`, and the per-CLI `sync --since` subcommand deferred to v0.8.0's
+  Rung 5 work).
+- 18 new tests (archetype / NOI / manifest / absorb / typed tables); full suite
+  104 passed, plus the multi-language compile suite (4 passed). ruff + mypy clean.
 
 ## 0.7.0 -- 2026-06-07
 
