@@ -243,6 +243,40 @@ def shipcheck_cmd(
         raise typer.Exit(1)
 
 
+@app.command()
+def verify(
+    name: str = typer.Argument(..., help="CLI slug, e.g. petstore"),
+    source: str = typer.Option(..., "--source", "-s",
+                               help="Original spec/source (or .apispec.json) to prove against"),
+    out_dir: Path = typer.Option(Path("./out"), "--out-dir"),
+    json_out: bool = typer.Option(False, "--json", help="Emit the proof report as JSON"),
+) -> None:
+    """Proof of behavior: mechanically verify a generated CLI matches its spec."""
+    from ducktap.verify.proof import verify as run_proofs
+    if source.endswith(".json") and Path(source).exists():
+        from ducktap.core.spec import APISpec
+        spec = APISpec.model_validate_json(Path(source).read_text(encoding="utf-8"))
+    else:
+        spec = discover(source, name=name)
+    report = run_proofs(spec, str(out_dir), name)
+    if json_out:
+        typer.echo(json.dumps(report.to_dict(), indent=2))
+    else:
+        table = Table(title=f"proof of behavior: {name}")
+        table.add_column("proof")
+        table.add_column("pass")
+        table.add_column("detail")
+        for p in report.proofs:
+            table.add_row(
+                p.name,
+                "[green]OK[/]" if p.passed else "[red]FAIL[/]",
+                p.detail + (f" -- {', '.join(p.offenders[:3])}" if p.offenders else ""),
+            )
+        console.print(table)
+    if not report.passed:
+        raise typer.Exit(5)
+
+
 catalog_app = typer.Typer(help="Browse and install from the DuckTap catalog.")
 app.add_typer(catalog_app, name="catalog")
 
