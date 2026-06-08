@@ -325,15 +325,15 @@ v0.8 closes the verification gap (proof of behavior, golden harness) and pushes 
 generated CLI up to Rung 5 behavioral insights now that the typed data layer from v0.7
 makes them possible.
 
-### Proof of Behavior (4 Mechanical Proofs)
+### Proof of Behavior (4 Mechanical Proofs) — landed v0.8.1
 
-- [ ] **Path Proof** — every URL in generated commands exists in the APISpec. Auto-removes commands with hallucinated paths and re-generates.
-- [ ] **Flag Proof** — every registered Click option is referenced in at least one command handler. Removes dead flags.
-- [ ] **Pipeline Proof** — every SQLite table written by `sync` is read by at least one of `search`, `query`, `sql`. Fails if `sync` writes to a table that nothing reads.
-- [ ] **Auth Proof** — auth header format in `client.py.j2` matches the spec's `auth_schemes[*].type`. `Bearer` vs `Basic` vs `ApiKey` mismatch is a hard fail.
-- [ ] `ducktap verify <name>` runs all four proofs and emits a structured JSON report
+- [x] **Path Proof** — every request path in the generated commands exists in the APISpec (flags hallucinated/stale endpoints). *Auto-remediation deferred — see below.*
+- [x] **Coverage Proof** — every spec operation is reachable as a generated command. *(Implemented in place of the Flag Proof; flag-level dead-code detection still TODO.)*
+- [x] **Pipeline Proof** — every mirror table created is read by a SELECT path; no write-only tables. *(Caught and removed the dead `domain_entities` table.)*
+- [x] **Auth Proof** — the generated client's auth header matches the spec's `auth_schemes[*].type` (Bearer for http/oauth2, the named header for apiKey).
+- [x] `ducktap verify <name> -s <source>` runs the proofs and emits a structured JSON report (exit 5 on failure).
 - [ ] Proof failures trigger auto-remediation: remove dead code, re-run proof, max 3 iterations
-- [ ] Scorecard domain_correctness tier is rewired to use proof results instead of structural heuristics
+- [ ] Scorecard `domain_correctness` tier rewired to use proof results instead of structural heuristics
 
 ### Rung 5 — Behavioral Insight Commands
 
