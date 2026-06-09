@@ -243,12 +243,29 @@ def _parse_operation(
     )
 
 
+_VALID_LOCATIONS = {"path", "query", "header", "body", "cookie"}
+
+
+def _coerce_location(loc: Any) -> str:
+    """Map an OpenAPI parameter `in` value to a valid ParamLocation.
+
+    Swagger 2.0 uses `formData` (and occasionally other values); treat anything
+    unrecognized as a query parameter so a single odd param never crashes the
+    whole spec parse.
+    """
+    if loc in _VALID_LOCATIONS:
+        return str(loc)
+    if loc == "formData":
+        return "query"
+    return "query"
+
+
 def _parse_param(raw: dict[str, Any], is_v3: bool) -> Param:
     schema = raw.get("schema") if is_v3 else raw
     schema = schema or {}
     return Param(
         name=raw["name"],
-        location=raw.get("in", "query"),
+        location=_coerce_location(raw.get("in", "query")),  # type: ignore[arg-type]
         type=(schema.get("type") if isinstance(schema, dict) else None) or "string",
         required=bool(raw.get("required")),
         description=raw.get("description", "") or "",

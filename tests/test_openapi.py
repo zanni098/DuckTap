@@ -20,3 +20,13 @@ def test_petstore_discovery():
     for op in spec.operations:
         assert op.method
         assert op.path.startswith("/")
+
+
+def test_formdata_param_location_coerced_to_query():
+    """Swagger 2.0 `in: formData` (and unknown locations) must not crash parsing."""
+    from ducktap.discovery.openapi import _coerce_location, _parse_param
+    assert _coerce_location("formData") == "query"
+    assert _coerce_location("weird") == "query"
+    assert _coerce_location("path") == "path"
+    p = _parse_param({"name": "file", "in": "formData"}, is_v3=False)
+    assert p.location == "query" and p.name == "file"
