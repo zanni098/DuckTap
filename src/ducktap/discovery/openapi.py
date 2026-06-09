@@ -196,7 +196,7 @@ def _parse_operation(
                     continue
                 params.append(Param(
                     name=pname, location="body",
-                    type=pschema.get("type", "string"),
+                    type=_coerce_type(pschema.get("type")),
                     required=pname in required_set,
                     description=pschema.get("description", ""),
                     enum=pschema.get("enum"),
@@ -246,6 +246,21 @@ def _parse_operation(
 _VALID_LOCATIONS = {"path", "query", "header", "body", "cookie"}
 
 
+def _coerce_type(t: Any) -> str:
+    """Normalize an OpenAPI `type` to a single string.
+
+    OpenAPI 3.1 allows `type` to be an array (e.g. ["string", "null"] for a
+    nullable field); take the first non-null entry. Anything unusable -> "string".
+    """
+    if isinstance(t, str):
+        return t
+    if isinstance(t, list):
+        for x in t:
+            if isinstance(x, str) and x != "null":
+                return x
+    return "string"
+
+
 def _coerce_location(loc: Any) -> str:
     """Map an OpenAPI parameter `in` value to a valid ParamLocation.
 
@@ -266,7 +281,7 @@ def _parse_param(raw: dict[str, Any], is_v3: bool) -> Param:
     return Param(
         name=raw["name"],
         location=_coerce_location(raw.get("in", "query")),  # type: ignore[arg-type]
-        type=(schema.get("type") if isinstance(schema, dict) else None) or "string",
+        type=_coerce_type(schema.get("type") if isinstance(schema, dict) else None),
         required=bool(raw.get("required")),
         description=raw.get("description", "") or "",
         default=schema.get("default") if isinstance(schema, dict) else None,

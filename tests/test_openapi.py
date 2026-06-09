@@ -30,3 +30,14 @@ def test_formdata_param_location_coerced_to_query():
     assert _coerce_location("path") == "path"
     p = _parse_param({"name": "file", "in": "formData"}, is_v3=False)
     assert p.location == "query" and p.name == "file"
+
+
+def test_array_type_coerced_to_string():
+    """OpenAPI 3.1 array `type` (e.g. ["string","null"]) must not crash parsing."""
+    from ducktap.discovery.openapi import _coerce_type, _parse_param
+    assert _coerce_type(["string", "null"]) == "string"
+    assert _coerce_type(["null", "integer"]) == "integer"
+    assert _coerce_type("number") == "number"
+    assert _coerce_type(None) == "string"
+    p = _parse_param({"name": "x", "in": "query", "schema": {"type": ["string", "null"]}}, is_v3=True)
+    assert p.type == "string"
