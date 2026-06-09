@@ -28,9 +28,14 @@ class CatalogEntry(BaseModel):
 
 
 def _catalog_dirs() -> list[Path]:
-    here = Path(__file__).resolve().parents[3] / "catalog"
+    dirs: list[Path] = []
+    # 1. Recipes bundled inside the installed package (wheel/sdist). This is what
+    #    a `pip install ducktap` ships -- see the force-include in pyproject.toml.
+    dirs.append(Path(__file__).resolve().parent / "_recipes")
+    # 2. Repo-root catalog/ for editable installs and source checkouts.
+    dirs.append(Path(__file__).resolve().parents[3] / "catalog")
+    # 3. User-supplied extra catalog directory.
     extra = os.environ.get("DUCKTAP_CATALOG")
-    dirs = [here]
     if extra:
         dirs.append(Path(extra))
     return [d for d in dirs if d.exists()]
