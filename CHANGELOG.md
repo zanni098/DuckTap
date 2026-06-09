@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.8.1 -- 2026-06-08
+
+Additive depth + UI polish on top of 0.8.0. (Not the full v0.8.0 "Verification
+& Depth" milestone — see `docs/ROADMAP.md` for what remains.)
+
+### Added
+
+- **`ducktap verify` — proof of behavior** (`verify/proof.py`): four deterministic
+  proofs against the spec + generated Python CLI — Path Proof (no hallucinated
+  endpoints), Coverage Proof (every operation exposed), Auth Proof (auth header
+  matches the scheme type), and Pipeline Proof (no write-only mirror tables).
+  Emits a table or `--json` report; exits 5 on failure.
+- **Polished dashboard** (`ducktap ui`): rebuilt into a finished, dark-themed
+  workbench — multi-target press console (Python/Go/Rust/TS/MCP/skill +
+  archetype override + deterministic toggle) and a live result panel showing the
+  detected archetype, the Non-Obvious Insight, an animated per-dimension
+  scorecard, the artifact tree, and the provenance manifest. New `/api/health`.
+
+### Fixed
+
+- The Pipeline Proof caught a real dead table: the legacy generic
+  `domain_entities` blob (superseded by the v0.7.x typed archetype tables) was
+  created in the generated mirror but never read or written. Removed.
+
 ## 0.8.0 -- 2026-06-08
 
 The **Creative Layer** (the v0.7.x roadmap) lands. Press now front-loads a

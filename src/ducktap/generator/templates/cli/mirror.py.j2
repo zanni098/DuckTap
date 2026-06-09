@@ -79,15 +79,6 @@ class _SQLiteBackend:
                 saved_at REAL NOT NULL
             )
         """)
-        # Domain-specific tables for common API entities
-        self.conn.execute("""
-            CREATE TABLE IF NOT EXISTS domain_entities (
-                endpoint TEXT NOT NULL,
-                entity_type TEXT,
-                body TEXT NOT NULL,
-                saved_at REAL NOT NULL
-            )
-        """)
         # FTS5 virtual table for full-text search over JSON bodies
         self.conn.execute("""
             CREATE VIRTUAL TABLE IF NOT EXISTS records_fts USING fts5(

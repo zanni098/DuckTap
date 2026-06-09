@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ducktap"
-version = "0.8.0"
+version = "0.8.1"
 description = "DuckTap — a CLI factory for AI agents. Print agent-native CLIs + MCP servers + skills from any API or website."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -60,6 +60,14 @@ Issues = "https://github.com/zanni098/DuckTap/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ducktap"]
+
+# Bundle the catalog recipes into the installed package so `pip install ducktap`
+# ships them (registry.py loads them from ducktap/catalog/_recipes/).
+[tool.hatch.build.targets.wheel.force-include]
+"catalog" = "ducktap/catalog/_recipes"
+
+[tool.hatch.build.targets.sdist]
+include = ["src/ducktap", "catalog", "README.md", "LICENSE", "CHANGELOG.md"]
 
 [tool.ruff]
 line-length = 100
