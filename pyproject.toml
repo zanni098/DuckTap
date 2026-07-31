@@ -31,6 +31,7 @@ dependencies = [
     "jinja2>=3.1",
     "jsonref>=1.1",
     "fastapi>=0.110",            # web ui
+    "python-multipart>=0.0.9",   # fastapi Form() parsing on /generate
     "uvicorn[standard]>=0.30",
     "click>=8.1",                # generated CLIs use Click
 ]
@@ -55,6 +56,9 @@ dev = [
     "ruff>=0.5",
     "mypy>=1.10",
     "types-PyYAML>=6.0",
+    # Not a DuckTap dependency -- the *generated* MCP server imports it, and
+    # tests/test_e2e.py imports the generated package to prove it works.
+    "mcp>=1.0",
 ]
 
 [project.scripts]
