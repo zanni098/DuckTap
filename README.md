@@ -6,7 +6,7 @@
 > *prints* an MCP server — plus a Python CLI and an agent skill — that any agent can use.
 > Same spec → same output, every time. Runs in CI.
 
-**Website:** [ducktap-website.vercel.app](https://ducktap-website.vercel.app)
+**Website:** [duck-tap.vercel.app](https://duck-tap.vercel.app)
 
 [![CI](https://github.com/zanni098/DuckTap/actions/workflows/ci.yml/badge.svg)](https://github.com/zanni098/DuckTap/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/zanni098/DuckTap?display_name=tag&sort=semver)](https://github.com/zanni098/DuckTap/releases)
