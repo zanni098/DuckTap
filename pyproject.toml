@@ -96,7 +96,8 @@ files = ["src/ducktap"]
 ignore_missing_imports = false
 
 # Optional/untyped third-party libraries without stubs or py.typed markers.
-# These are pulled in only by extras (sniff/search) or ship no type info.
+# These are pulled in only by extras (llm/sniff/search) or ship no type info,
+# so they are absent from a `.[dev]` install and must not fail the type check.
 [[tool.mypy.overrides]]
-module = ["jsonref", "playwright.*", "duckduckgo_search", "mitmproxy.*"]
+module = ["jsonref", "playwright.*", "duckduckgo_search", "mitmproxy.*", "litellm"]
 ignore_missing_imports = true
