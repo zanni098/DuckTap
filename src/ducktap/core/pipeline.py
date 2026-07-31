@@ -24,13 +24,13 @@ def discover(source: str, *, hint: str | None = None, **opts: Any) -> APISpec:
     if hint:
         if hint not in discs:
             raise ValueError(f"unknown discoverer: {hint}. Have: {list(discs)}")
-        return discs[hint].discover(source, **opts)
+        return discs[hint].discover(source, **opts).normalize()
     # priority order
     for name in ("openapi", "graphql", "har", "browser-sniff"):
         d = discs.get(name)
         if d and d.can_handle(source):
             plugins.emit("discovery.start", name=name, source=source)
-            spec = d.discover(source, **opts)
+            spec = d.discover(source, **opts).normalize()
             plugins.emit("discovery.done", name=name, spec=spec)
             return spec
     raise ValueError(f"no discoverer can handle: {source}")
@@ -43,7 +43,7 @@ def press(
     name: str | None = None,
     archetype: str | None = None,
     insight: str | None = None,
-    use_llm: bool = True,
+    use_llm: bool = False,
     **opts: Any,
 ) -> PressResult:
     """One-shot: discover then generate all default targets.
@@ -51,6 +51,10 @@ def press(
     Phase 0 (Creative Layer): detect the domain archetype and generate a
     Non-Obvious Insight before generation, then write a `.ducktap.json`
     provenance manifest alongside the artifacts.
+
+    `use_llm` defaults to False: the same spec has to produce the same output
+    for the manifest checksum, CI use and reviewable diffs to mean anything.
+    Opt in per call (or with `ducktap press --llm`).
     """
     plugins.autoload_builtins()
     spec = discover(source, hint=hint, name=name, **opts)

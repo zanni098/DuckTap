@@ -42,11 +42,11 @@ def screenshot_to_text(url: str, model: str | None = None) -> str:
         "Describe the API documentation visible in this screenshot. "
         "List any endpoint paths, HTTP methods, and parameter names you can see."
     )
-    # LiteLLM vision format
-    content = [
+    # LiteLLM vision format: the content has to stay a list of parts. Passing
+    # `str(content)` instead sends the model the *repr* of a Python list, so
+    # the screenshot is never actually looked at.
+    content: list[dict[str, Any]] = [
         {"type": "text", "text": prompt},
         {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
     ]
-    # type: ignore[arg-type]  # LiteLLM accepts mixed content
-    messages = [Message("user", str(content))]
-    return llm.complete(messages)
+    return llm.complete([Message("user", content)])

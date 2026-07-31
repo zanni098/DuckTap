@@ -14,7 +14,12 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from ducktap import __version__ as ducktap_version
 from ducktap.core import plugins
-from ducktap.core.naming import cli_command_name, flag_name
+from ducktap.core.naming import (
+    cli_command_name,
+    flag_name,
+    safe_identifier,
+    semver_version,
+)
 from ducktap.core.spec import APISpec, Operation, Param
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -23,10 +28,7 @@ _IDENT_RE = re.compile(r"[^A-Za-z0-9_]+")
 
 def _rustident(s: str) -> str:
     """Turn an arbitrary string into a safe Rust identifier."""
-    out = _IDENT_RE.sub("_", str(s))
-    if out and out[0].isdigit():
-        out = "_" + out
-    return out or "_"
+    return safe_identifier(s, lang="rust")
 
 
 def _env() -> Environment:
@@ -104,6 +106,7 @@ class RustCLIGenerator:
             "cli_bin": spec.name + "-dt-rs",
             "operations": spec.operations,
             "ducktap_version": ducktap_version,
+            "package_version": semver_version(spec.version),
             "path_params": _path_params,
             "query_params": _query_params,
             "body_params": _body_params,

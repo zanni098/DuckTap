@@ -17,7 +17,9 @@ from typing import Any
 @dataclass
 class Message:
     role: str  # "system" | "user" | "assistant"
-    content: str
+    # Plain text, or the multi-part list form vision models expect
+    # (`[{"type": "text", ...}, {"type": "image_url", ...}]`).
+    content: str | list[dict[str, Any]]
 
 
 DEFAULT_MODEL = os.environ.get("DUCKTAP_MODEL", "anthropic/claude-3-5-sonnet-latest")
@@ -36,7 +38,8 @@ class LLM:
             import litellm
         except ImportError as e:
             raise RuntimeError(
-                "LLM features require litellm. Install with: pip install litellm"
+                "LLM features require litellm. Install with: "
+                "pip install 'ducktap[llm]'"
             ) from e
         resp = litellm.completion(
             model=self.model,

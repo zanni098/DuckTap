@@ -41,22 +41,53 @@ def _catalog_dirs() -> list[Path]:
     return [d for d in dirs if d.exists()]
 
 
-def load_catalog() -> dict[str, CatalogEntry]:
-    out: dict[str, CatalogEntry] = {}
+def _recipe_files() -> list[Path]:
+    files: list[tuple[Path, Path]] = []
     for d in _catalog_dirs():
         # Recurse one level into category subdirs (library layout),
         # plus top-level YAMLs (built-in layout).
         for p in list(d.glob("*.yaml")) + list(d.glob("*/*.yaml")):
             if any(part.startswith(".") for part in p.relative_to(d).parts):
                 continue
-            try:
-                data = yaml.safe_load(p.read_text(encoding="utf-8"))
-                if not isinstance(data, dict):
-                    continue
-                e = CatalogEntry(**data)
-                out[e.name] = e
-            except Exception:
+            files.append((d, p))
+    return [p for _, p in files]
+
+
+# Parsing ~30 YAML files on every lookup is the dashboard's hottest path: a
+# single page render calls list_entries() several times, and get_entry() used
+# to re-read the whole catalog to answer one question. Cache the parse and
+# invalidate on mtime, which costs one stat per recipe instead.
+_cache: tuple[tuple[tuple[str, int], ...], dict[str, CatalogEntry]] | None = None
+
+
+def _signature(files: list[Path]) -> tuple[tuple[str, int], ...]:
+    sig: list[tuple[str, int]] = []
+    for p in files:
+        try:
+            sig.append((str(p), p.stat().st_mtime_ns))
+        except OSError:
+            continue
+    return tuple(sorted(sig))
+
+
+def load_catalog() -> dict[str, CatalogEntry]:
+    global _cache
+    files = _recipe_files()
+    signature = _signature(files)
+    if _cache is not None and _cache[0] == signature:
+        return _cache[1]
+
+    out: dict[str, CatalogEntry] = {}
+    for p in files:
+        try:
+            data = yaml.safe_load(p.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
                 continue
+            e = CatalogEntry(**data)
+            out[e.name] = e
+        except Exception:
+            continue
+    _cache = (signature, out)
     return out
 
 

@@ -1,12 +1,22 @@
 {
   "name": "{{ skill_name }}",
-  "version": "{{ spec.version }}",
+  "version": "{{ package_version }}",
+  "api_version": "{{ spec.version }}",
   "binary": "{{ cli_bin }}",
   "mcp_binary": "{{ mcp_bin }}",
+  "exit_codes": {
+    "0": "success",
+    "3": "404 not found",
+    "4": "401/403 auth",
+    "5": "other API error",
+    "7": "429 rate limited",
+    "10": "local configuration error"
+  },
   "tools": [
     {% for op in spec.operations %}
     {
       "name": "{{ op.operation_id | cmd }}",
+      "command": {{ (cli_bin + " " + (op | invocation)) | tojson }},
       "description": {{ (op.summary or op.description or op.method + " " + op.path) | tojson }},
       "method": "{{ op.method }}",
       "path": "{{ op.path }}",
@@ -14,6 +24,7 @@
         {% for p in op.params %}
         {
           "name": "{{ p.name }}",
+          "flag": "{{ p.name | flag }}",
           "in": "{{ p.location }}",
           "type": "{{ p.type }}",
           "required": {{ "true" if p.required else "false" }},

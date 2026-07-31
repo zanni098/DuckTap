@@ -10,8 +10,11 @@ import io
 import json
 import os
 import re
+import time
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 import click
 
@@ -147,6 +150,36 @@ def _coerce(v: Any) -> Any:
         except Exception:
             return v
     return v
+
+
+def _quote_path(value: Any) -> str:
+    """Percent-encode a value before it is spliced into the request path.
+
+    Without this a value such as `../admin` or `x?role=admin` would silently
+    retarget the request at a different endpoint.
+    """
+    return quote(str(value), safe="")
+
+
+def _use_cache(ctx: click.Context, method: str) -> bool:
+    """Read-through cache applies to GETs only, and only when --cache is on."""
+    return method.upper() == "GET" and bool(ctx.obj.get("cache"))
+
+
+def _watch_ticks(ctx: click.Context) -> Iterator[int]:
+    """Yield once, or forever every --watch seconds."""
+    interval = int(ctx.obj.get("watch") or 0)
+    if interval <= 0:
+        yield 0
+        return
+    tick = 0
+    while True:
+        yield tick
+        tick += 1
+        try:
+            time.sleep(interval)
+        except KeyboardInterrupt:  # pragma: no cover - interactive only
+            return
 
 
 def _get_client(ctx: click.Context) -> Client:
@@ -407,7 +440,8 @@ def register(cli: click.Group) -> None:
                 "--agent", "--json", "--pretty", "--no-color",
                 "--format=json|jsonl|csv|plain|pretty",
                 "--select id,name", "--compact", "--quiet", "--dry-run",
-                "--rate-limit N", "--timeout SECONDS",
+                "--rate-limit N", "--timeout SECONDS", "--watch SECONDS",
+                "--save COLLECTION",
                 "--profile NAME", "--cache/--no-cache", "--cache-ttl",
                 "--debug",
             ],
@@ -588,32 +622,27 @@ def register(cli: click.Group) -> None:
 
     {% for op in operations %}
     {% set group_name = (op.tags[0] if op.tags else "general") | cmd %}
-    {% set _ns = namespace(seen=[]) %}
-    {% set _ = _ns.seen.append("__placeholder__") %}
+    {% set cps = op | cli_params %}
     _target = _get_group({{ group_name | tojson }}) or cli
 
     @_target.command(
         "{{ op.operation_id | cmd }}",
         help={{ (op.summary or op.description or op.operation_id) | tojson }},
     )
-    {% for p in op.params %}
-    {% set _flag = p.name | flag %}
-    {% if _flag in _ns.seen %}
-    {% set _flag = "--body-" + (p.name | flag | replace("--", "")) %}
-    {% endif %}
-    {% set _ = _ns.seen.append(_flag) %}
+    {% for cp in cps %}
+    {% set p = cp.param %}
     {% if p.location == "path" %}
     @click.option(
-        "{{ _flag }}",
-        "{{ p.name | pyident }}",
+        "{{ cp.flag }}",
+        "{{ cp.dest }}",
         type={{ p | clicktype }},
         required=True,
         help={{ ("Path parameter: " + (p.description or p.name)) | tojson }},
     )
     {% elif p.location == "query" %}
     @click.option(
-        "{{ _flag }}",
-        "{{ p.name | pyident }}",
+        "{{ cp.flag }}",
+        "{{ cp.dest }}",
         type={{ p | clicktype }},
 {% if p.default is not none %}
         default={{ p.default | pyrepr }},
@@ -625,16 +654,16 @@ def register(cli: click.Group) -> None:
     )
     {% elif p.location == "header" %}
     @click.option(
-        "{{ _flag }}",
-        "{{ p.name | pyident }}",
+        "{{ cp.flag }}",
+        "{{ cp.dest }}",
         type={{ p | clicktype }},
         required={{ "True" if p.required else "False" }},
         help={{ ("Header: " + (p.description or p.name)) | tojson }},
     )
     {% elif p.location == "body" %}
     @click.option(
-        "{{ _flag }}",
-        "{{ p.name | pyident }}",
+        "{{ cp.flag }}",
+        "{{ cp.dest }}",
         type=str,
         required={{ "True" if p.required else "False" }},
         help={{ ("Body field: " + (p.description or p.name)) | tojson }},
@@ -644,26 +673,26 @@ def register(cli: click.Group) -> None:
     @click.pass_context
     def {{ op.operation_id | pyident }}(ctx: click.Context, **kwargs: Any) -> None:
         path = "{{ op.path }}"
-        {% for p in op.params if p.location == "path" %}
-        path = path.replace("{{ '{' + p.name + '}' }}", str(kwargs.pop("{{ p.name | pyident }}")))
+        {% for cp in cps if cp.param.location == "path" %}
+        path = path.replace("{{ '{' + cp.param.name + '}' }}", _quote_path(kwargs.get("{{ cp.dest }}")))
         {% endfor %}
         query: dict[str, Any] = {}
-        {% for p in op.params if p.location == "query" %}
-        if kwargs.get("{{ p.name | pyident }}") is not None:
-            query["{{ p.name }}"] = kwargs.pop("{{ p.name | pyident }}")
+        {% for cp in cps if cp.param.location == "query" %}
+        if kwargs.get("{{ cp.dest }}") is not None:
+            query["{{ cp.param.name }}"] = kwargs["{{ cp.dest }}"]
         {% endfor %}
         headers: dict[str, str] = {}
-        {% for p in op.params if p.location == "header" %}
-        if kwargs.get("{{ p.name | pyident }}") is not None:
-            headers["{{ p.name }}"] = kwargs.pop("{{ p.name | pyident }}")
+        {% for cp in cps if cp.param.location == "header" %}
+        if kwargs.get("{{ cp.dest }}") is not None:
+            headers["{{ cp.param.name }}"] = kwargs["{{ cp.dest }}"]
         {% endfor %}
         body: Any = None
-        {% set bps = op.params | selectattr("location", "equalto", "body") | list %}
+        {% set bps = cps | selectattr("param.location", "equalto", "body") | list %}
         {% if bps %}
         body = {}
-        {% for p in bps %}
-        if kwargs.get("{{ p.name | pyident }}") is not None:
-            body["{{ p.name }}"] = _coerce(kwargs.pop("{{ p.name | pyident }}"))
+        {% for cp in bps %}
+        if kwargs.get("{{ cp.dest }}") is not None:
+            body["{{ cp.param.name }}"] = _coerce(kwargs["{{ cp.dest }}"])
         {% endfor %}
         if not body:
             body = None
@@ -676,18 +705,19 @@ def register(cli: click.Group) -> None:
             _emit(ctx, _dry_run_payload(client, "{{ op.method }}", path, query, headers, body),
                   raw=True)
             return
-        try:
-            data = client.request(
-                "{{ op.method }}", path,
-                query=query, headers=headers, json_body=body,
-                use_cache=("{{ op.method }}" == "GET"),
-            )
-        except APIError as e:
-            click.echo(json.dumps({"error": str(e), "status": e.status, "body": e.body},
-                                  indent=2, default=str), err=True)
-            ctx.exit(_exit_code(e.status))
-        _maybe_save(ctx, client, "{{ op.method }}", path, data)
-        _emit(ctx, data)
+        for _attempt in _watch_ticks(ctx):
+            try:
+                data = client.request(
+                    "{{ op.method }}", path,
+                    query=query, headers=headers, json_body=body,
+                    use_cache=_use_cache(ctx, "{{ op.method }}"),
+                )
+            except APIError as e:
+                click.echo(json.dumps({"error": str(e), "status": e.status, "body": e.body},
+                                      indent=2, default=str), err=True)
+                ctx.exit(_exit_code(e.status))
+            _maybe_save(ctx, client, "{{ op.method }}", path, data)
+            _emit(ctx, data)
 
     {% endfor %}
     # Compound query commands for the local data lake
@@ -695,14 +725,15 @@ def register(cli: click.Group) -> None:
     @click.option("--hours", default=24, help="Age threshold in hours.")
     @click.pass_context
     def stale_cmd(ctx, hours):
-        import time
         client = _get_client(ctx)
         if not client.mirror:
             click.echo(json.dumps({"error": "Mirror not enabled"}, indent=2), err=True)
             ctx.exit(10)
         cutoff = time.time() - (hours * 3600)
         rows = client.mirror.query(
-            f"SELECT collection, method, path, url, saved_at FROM records WHERE saved_at < {cutoff} ORDER BY saved_at DESC"
+            "SELECT collection, method, path, url, saved_at FROM records "
+            "WHERE saved_at < ? ORDER BY saved_at DESC",
+            (cutoff,),
         )
         _emit(ctx, {"stale_records": rows}, raw=True)
 
@@ -737,7 +768,9 @@ def register(cli: click.Group) -> None:
             click.echo(json.dumps({"error": "Mirror not enabled"}, indent=2), err=True)
             ctx.exit(10)
         rows = client.mirror.query(
-            f"SELECT method, path, COUNT(*) as calls FROM records GROUP BY method, path ORDER BY calls DESC LIMIT {limit}"
+            "SELECT method, path, COUNT(*) as calls FROM records "
+            "GROUP BY method, path ORDER BY calls DESC LIMIT ?",
+            (limit,),
         )
         _emit(ctx, {"bottlenecks": rows}, raw=True)
 

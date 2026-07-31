@@ -35,7 +35,9 @@ Scorecard: 87/100 (B)
 
 **Why deterministic?** DuckTap parses the spec and emits code directly — no model in the
 loop. That means no API key, no per-run token cost, reproducible output you can diff and
-review, and generation that runs in CI.
+review, and generation that runs in CI. (An LLM can optionally sharpen the generated
+insight — `ducktap press --llm`, needing the `[llm]` extra — but it is off by default so
+`press` stays reproducible.)
 
 Inspired by [Printing Press](https://printingpress.dev) by
 [@mvanhorn](https://github.com/mvanhorn) — same north star (*muscle memory for agents*).
@@ -70,11 +72,14 @@ pip install ducktap
 ducktap --version
 ```
 
-For browser sniffing (optional):
+The core install is deterministic-only and stays small. Optional extras:
 
 ```bash
-pip install "ducktap[sniff]"
+pip install "ducktap[sniff]"    # browser + proxy sniffing (playwright, mitmproxy)
 playwright install chromium
+pip install "ducktap[llm]"      # optional LLM steps: polish, rename, insight, vision
+pip install "ducktap[search]"   # crowd-sniff web search
+pip install "ducktap[all]"      # everything
 ```
 
 **Requires Python 3.11+.**
@@ -86,7 +91,7 @@ playwright install chromium
 git clone https://github.com/zanni098/DuckTap
 cd DuckTap
 pip install -e ".[dev]"
-python -m pytest tests/ -q   # 86 passed; language compile tests skipped by default
+python -m pytest tests/ -q   # 145 passed; language compile tests skipped by default
 
 # Opt into the heavy compile tests (needs go, cargo, and node installed).
 # These press the fixture into Go/Rust/TS and actually build each project.
@@ -156,17 +161,46 @@ out/
     └── tools.json          # generic agent tool definitions
 ```
 
+## Correctness
+
+Generation is only useful if the output is right, so the guarantees are tested
+rather than asserted:
+
+- **Deterministic.** Two presses of the same spec produce byte-identical output.
+  The `.ducktap.json` manifest records a checksum of the normalized spec so you
+  can tell "the API changed" from "DuckTap changed".
+- **It parses, installs, and runs.** Reserved words (`operationId: class`),
+  colliding operation ids, colliding parameter names, and non-PEP 440 versions
+  (Stripe ships `2022-11-15`) are all handled — each one used to produce code
+  that wouldn't compile, silently dropped a command, or built the wrong request.
+- **Recursive `$ref` schemas work.** Self-referencing models are the norm in real
+  specs; cycles are cut at the discovery boundary.
+- **The skill matches the CLI.** `SKILL.md`, `cursor.mdc` and `tools.json` are
+  cross-checked against the generated Click command tree by a test, so an agent
+  reading the skill never sees a command or flag that doesn't exist.
+- **Generated CLIs don't leak credentials.** Redirects are followed by hand and
+  only benign headers cross an origin boundary; path parameters are
+  percent-encoded; `<cli> query` runs on a read-only SQLite connection.
+- `ducktap verify` mechanically proves the generated CLI matches the spec — no
+  hallucinated paths, every operation reachable, auth headers correct, no
+  write-only mirror tables.
+
 ## How DuckTap improves on Printing Press
 
 | | Printing Press | **DuckTap** |
 |---|---|---|
-| Language | Go | Python -- easier to extend, richer LLM ecosystem |
-| LLM | Claude only | **Multi-LLM via LiteLLM** (Anthropic, OpenAI, Gemini, Ollama, Groq, Azure) |
+| Generation | Prompt-driven, a fresh model run each time | **Deterministic** -- same spec, same bytes, runs in CI |
+| Needs to run | Go + Node + Claude Code | **A Python interpreter** |
+| Output languages | Go | **Python, Go, Rust, TypeScript** from one spec |
 | Skills | Claude Code | **Claude Code + Cursor `.mdc` + generic `tools.json`** |
 | UI | None | **Local FastAPI dashboard** (`ducktap ui`) |
 | Plugins | Source fork | **Entry-point plugin system** -- drop-in discoverers & generators |
 | Browser sniff | Custom Go browser | **Playwright** -- full HAR export, scriptable actions |
-| Generated CLI runtime | Single Go binary | Python (pip-installable, hackable, single-file editable) |
+| LLM (optional) | Claude only | **Multi-LLM via LiteLLM** (Anthropic, OpenAI, Gemini, Ollama, Groq, Azure) |
+
+Printing Press wins on maturity and on its 250+ CLI community library. The
+[honest comparison](docs/ducktap-vs-printing-press.md) covers when to reach for
+which.
 
 See [`docs/COMPARISON.md`](docs/COMPARISON.md) for the full feature matrix.
 
@@ -178,9 +212,22 @@ ducktap research <source>       # discover only -- emit normalized APISpec JSON
 ducktap sniff <url>             # browser-sniff a site (needs [sniff] extra)
 ducktap scorecard <source>      # quality scorecard
 ducktap shipcheck <name>        # structural & runtime sanity checks
+ducktap verify <name> -s <src>  # proof of behavior against the spec
+ducktap info                    # read back the provenance manifest
 ducktap catalog list|print      # browse the recipe library
 ducktap plugins list            # show installed discoverers + generators
+ducktap library list|add|search # local registry of printed CLIs
+ducktap macro list|run|new      # compound command macros
+ducktap publish <name>          # push a generated CLI to GitHub + PyPI
+ducktap emboss <name>           # brand-stamp a generated CLI
 ducktap ui                      # local web dashboard
+
+# Optional, need the [llm] extra:
+ducktap insight <source>        # one-sentence Non-Obvious Insight
+ducktap polish|rename <source>  # LLM cleanup of summaries / operation ids
+ducktap absorb <api>            # feature gate against the agent-CLI playbook
+ducktap crowd-sniff <api>       # study community CLIs (needs [search] too)
+ducktap vision <url>            # read a docs page from a screenshot
 ```
 
 ## Plugins

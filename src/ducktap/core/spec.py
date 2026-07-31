@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 HTTPMethod = Literal["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
 ParamLocation = Literal["path", "query", "header", "body", "cookie"]
@@ -83,6 +83,41 @@ class APISpec(BaseModel):
     # v0.7.x Creative Layer:
     archetype: str = "unknown"  # detected domain archetype (see core.archetype)
     insight: str = ""           # Non-Obvious Insight (NOI) for this API
+
+    @field_validator("name")
+    @classmethod
+    def _slug_name(cls, v: str) -> str:
+        """The name becomes directory names, package names and binary names.
+
+        Anything that is not a slug is therefore a bug at best and a path
+        traversal at worst (``--name ../../etc`` would otherwise write outside
+        the requested output directory), so normalize it here -- the one place
+        every discoverer funnels through -- rather than in each generator.
+        """
+        from ducktap.core.naming import slugify
+
+        slug = slugify(v)
+        if not slug:
+            raise ValueError(f"name {v!r} does not contain any usable characters")
+        return slug
+
+    def normalize(self) -> APISpec:
+        """Make the spec safe to hand to a generator. Mutates and returns self.
+
+        Currently: guarantees operation ids are unique. Duplicate ids are legal
+        in the wild (OpenAPI only *recommends* uniqueness, and synthesized ids
+        can collide after snake-casing) but every generator maps one id to one
+        symbol, so duplicates silently drop operations.
+        """
+        from ducktap.core.naming import uniquify
+
+        for op, unique_id in zip(
+            self.operations,
+            uniquify([op.operation_id for op in self.operations]),
+            strict=True,
+        ):
+            op.operation_id = unique_id
+        return self
 
     def by_tag(self) -> dict[str, list[Operation]]:
         groups: dict[str, list[Operation]] = {}

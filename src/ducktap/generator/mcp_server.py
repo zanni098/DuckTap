@@ -12,19 +12,34 @@ from typing import Any
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from ducktap.core import plugins
-from ducktap.core.naming import cli_command_name, flag_name
+from ducktap.core.naming import (
+    cli_command_name,
+    flag_name,
+    pep440_version,
+    safe_identifier,
+)
 from ducktap.core.spec import APISpec, Operation
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 
 
-def _plainify(obj: Any) -> Any:
+_MAX_SCHEMA_DEPTH = 24
+
+
+def _plainify(obj: Any, _depth: int = 0) -> Any:
     """Recursively convert jsonref proxies / weird subclasses into plain
-    dict/list/scalar so json.dumps works."""
+    dict/list/scalar so json.dumps works.
+
+    Bounded: a schema that references itself is a cyclic object graph, and an
+    unbounded walk of one raises RecursionError mid-generation. The OpenAPI
+    discoverer already cuts cycles, but a third-party discoverer may not.
+    """
+    if _depth >= _MAX_SCHEMA_DEPTH:
+        return {"type": "object"} if isinstance(obj, dict) else None
     if isinstance(obj, dict):
-        return {str(k): _plainify(v) for k, v in obj.items()}
+        return {str(k): _plainify(v, _depth + 1) for k, v in obj.items()}
     if isinstance(obj, (list, tuple)):
-        return [_plainify(v) for v in obj]
+        return [_plainify(v, _depth + 1) for v in obj]
     if isinstance(obj, (str, int, float, bool)) or obj is None:
         return obj
     return str(obj)
@@ -68,15 +83,7 @@ class MCPServerGenerator:
         )
         env.filters["flag"] = flag_name
         env.filters["cmd"] = cli_command_name
-        import re as _re
-        _ident_re = _re.compile(r"[^A-Za-z0-9_]+")
-
-        def _pyident(s: str) -> str:
-            out = _ident_re.sub("_", str(s))
-            if out and out[0].isdigit():
-                out = "_" + out
-            return out or "_"
-        env.filters["pyident"] = _pyident
+        env.filters["pyident"] = safe_identifier
 
         pkg_name = (spec.name + "_dt_mcp").replace("-", "_")
         bin_name = f"{spec.name}-dt-mcp"
@@ -100,6 +107,7 @@ class MCPServerGenerator:
         ctx = {
             "spec": spec, "pkg_name": pkg_name, "bin_name": bin_name,
             "cli_pkg": cli_pkg, "cli_bin": cli_bin, "tools": tools,
+            "package_version": pep440_version(spec.version),
         }
         written: list[str] = []
         for tpl, dst in [

@@ -1,26 +1,7 @@
 {
   "version": 2,
   "routes": [
-    {
-      "src": "/style\\.css",
-      "dest": "/style.css"
-    },
-    {
-      "src": "/script\\.js",
-      "dest": "/script.js"
-    },
-    {
-      "src": "/duck-logo\\.svg",
-      "dest": "/duck-logo.svg"
-    },
-    {
-      "src": "/favicon-.*\\.png",
-      "dest": "/favicon-:match.png"
-    },
-    {
-      "src": "/apple-touch-icon\\.png",
-      "dest": "/apple-touch-icon.png"
-    },
+    { "handle": "filesystem" },
     {
       "src": "/(.*)",
       "dest": "/index.html"

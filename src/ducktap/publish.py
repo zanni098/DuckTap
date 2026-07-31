@@ -25,6 +25,7 @@ class StepResult:
     cmd: str = ""
     stdout: str = ""
     stderr: str = ""
+    required: bool = True
 
 
 @dataclass
@@ -55,19 +56,17 @@ def _step(
     run: RunCmd,
     required: bool = True,
 ) -> StepResult:
+    """Run one command.
+
+    `ok` always reports what actually happened -- callers branch on it (the
+    `gh repo create` fallback, for one). `required` says whether a failure
+    should stop the workflow, and is recorded rather than folded into `ok`.
+    """
     rc, out, err = run(cmd, cwd)
-    ok = rc == 0
-    if required and not ok:
-        return StepResult(
-            name=name,
-            ok=False,
-            cmd=" ".join(cmd),
-            stdout=out,
-            stderr=err,
-        )
     return StepResult(
         name=name,
-        ok=True,
+        ok=rc == 0,
+        required=required,
         cmd=" ".join(cmd),
         stdout=out,
         stderr=err,
@@ -180,16 +179,22 @@ def publish(
 
         steps.append(_step("gh_repo_create", create_cmd, str(cli_dir), runner, required=False))
         if not steps[-1].ok:
-            # It may already exist; try pushing to existing remote
+            # It may already exist; try pushing to the existing remote. If that
+            # fails too, the GitHub half of the publish really did fail.
             steps.append(
                 _step(
                     "git_push",
                     ["git", "push", "-u", "origin", "HEAD"],
                     str(cli_dir),
                     runner,
-                    required=False,
                 )
             )
+            if not steps[-1].ok:
+                return PublishResult(
+                    success=False,
+                    steps=steps,
+                    message=f"GitHub publish failed: {steps[-1].stderr or 'push rejected'}",
+                )
 
     # 4. PyPI
     if pypi:
@@ -226,6 +231,13 @@ def publish(
                 message=f"PyPI upload failed: {steps[-1].stderr}",
             )
 
+    failed_required = [s for s in steps if s.required and not s.ok]
+    if failed_required:
+        return PublishResult(
+            success=False,
+            steps=steps,
+            message=f"Publish incomplete: {failed_required[0].name} failed.",
+        )
     return PublishResult(
         success=True,
         steps=steps,

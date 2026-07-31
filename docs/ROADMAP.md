@@ -114,6 +114,14 @@ over) Printing Press.
 - [x] mitmproxy-backed sniff (no headless Chromium needed) as an alternative
 - [x] Rate-limit + retry-with-backoff aware request inference
 
+  > **0.8.2 correction:** the GraphQL and mitmproxy discoverers shipped in 0.3.0
+  > but were never imported by `autoload_builtins`, so `discover()` could not
+  > find them by name — both were unreachable in practice. mitm-sniff
+  > additionally shelled out to `python -m mitmproxy` / `python -m mitmweb`,
+  > neither of which exists. Both are reachable and working as of v0.8.2. The
+  > same class of bug as the v0.6.0 multi-language correction below; the
+  > `plugins list` command now makes it visible.
+
 ## v0.4.0 -- Compound queries ✓
 
 - [x] **Compound command macros**: declarative recipes that chain multiple operations
@@ -334,6 +342,37 @@ makes them possible.
 - [x] `ducktap verify <name> -s <source>` runs the proofs and emits a structured JSON report (exit 5 on failure).
 - [ ] Proof failures trigger auto-remediation: remove dead code, re-run proof, max 3 iterations
 - [ ] Scorecard `domain_correctness` tier rewired to use proof results instead of structural heuristics
+
+### Hardening pass — landed v0.8.2
+
+A full-repo audit ahead of the v0.9 distribution push. No new features; the goal
+was that everything already claimed as shipped actually works on a real spec.
+See `CHANGELOG.md` for the itemized list.
+
+- [x] **Recursive `$ref` schemas no longer crash `press`** — a self-referencing
+      model (GitHub, Stripe, Notion) resolved into a cyclic object graph and blew
+      the stack during MCP tool generation. Cycles are now cut at the discovery
+      boundary.
+- [x] **Generated code is always valid** — reserved words (`operationId: class`),
+      colliding operation ids, and colliding parameter names each used to produce
+      output that would not parse, silently dropped a command, or built the wrong
+      request.
+- [x] **Generated packages are always installable** — `info.version` is normalized
+      to PEP 440 / semver, so date-versioned specs no longer produce a
+      `pyproject.toml` that pip refuses.
+- [x] **The generated skill matches the generated CLI** — it documented ungrouped
+      commands and raw parameter names (`get-pet-by-id --petId` for what is really
+      `pet get-pet-by-id --pet-id`), plus the wrong exit codes. Now cross-checked
+      by a test that walks the real command tree.
+- [x] **Security**: CSRF + origin checks and HTML escaping on the dashboard;
+      credentials no longer follow cross-origin redirects out of generated CLIs;
+      path parameters percent-encoded; `query` runs on a read-only connection;
+      `--name` can no longer escape the output directory.
+- [x] **`press` is deterministic by default** (`--llm` opts in), matching the
+      claim the whole project is built on.
+- [x] **`--watch` implemented** — it was parsed, stored, and never read.
+- [x] Packaging: `litellm` moved to an `[llm]` extra, `mcp` and the unused
+      `openapi-spec-validator` dropped from the base install.
 
 ### Rung 5 — Behavioral Insight Commands
 

@@ -14,7 +14,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from ducktap import __version__ as ducktap_version
 from ducktap.core import plugins
-from ducktap.core.naming import cli_command_name, flag_name
+from ducktap.core.naming import cli_command_name, flag_name, safe_identifier
 from ducktap.core.spec import APISpec, Operation, Param
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -26,7 +26,7 @@ def _goident(s: str) -> str:
     out = _IDENT_RE.sub("", str(s))
     if out and out[0].isdigit():
         out = "_" + out
-    return out or "_"
+    return safe_identifier(out or "_", lang="go")
 
 
 def _env() -> Environment:

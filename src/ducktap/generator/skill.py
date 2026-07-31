@@ -13,10 +13,23 @@ from typing import Any
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from ducktap.core import plugins
-from ducktap.core.naming import cli_command_name
-from ducktap.core.spec import APISpec
+from ducktap.core.naming import cli_command_name, flag_name, pep440_version
+from ducktap.core.spec import APISpec, Operation
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
+
+
+def invocation(op: Operation) -> str:
+    """The subcommand path an agent must actually type for `op`.
+
+    The generated CLI groups operations under their first tag, so
+    `get_pet_by_id` is reachable as `pet get-pet-by-id`, not `get-pet-by-id`.
+    A skill that documents the ungrouped form sends every agent that reads it
+    straight into "no such command".
+    """
+    command = cli_command_name(op.operation_id)
+    group = cli_command_name(op.tags[0]) if op.tags else "general"
+    return command if group == "general" else f"{group} {command}"
 
 
 class SkillGenerator:
@@ -32,6 +45,8 @@ class SkillGenerator:
             lstrip_blocks=True,
         )
         env.filters["cmd"] = cli_command_name
+        env.filters["flag"] = flag_name
+        env.filters["invocation"] = invocation
 
         cli_bin = f"{spec.name}-dt-cli"
         mcp_bin = f"{spec.name}-dt-mcp"
@@ -43,6 +58,7 @@ class SkillGenerator:
         ctx = {
             "spec": spec, "cli_bin": cli_bin, "mcp_bin": mcp_bin,
             "skill_name": skill_name, "harnesses": opts.get("harnesses", ["claude-code"]),
+            "package_version": pep440_version(spec.version),
         }
         written: list[str] = []
         # Always produce the Claude SKILL.md

@@ -9,8 +9,8 @@ and DuckTap will do the rest.
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
-import sys
 import tempfile
 import time
 from pathlib import Path
@@ -21,10 +21,26 @@ from ducktap.core.spec import APISpec
 
 MITM_ADDON = '''
 from mitmproxy import http
-import json, os
+import json, os, time
 
 _HAR = {"log": {"version": "1.2", "creator": {"name": "ducktap-mitm", "version": "0.1"}, "entries": []}}
 _OUT = os.environ.get("DUCKTAP_MITM_HAR", "/tmp/ducktap_mitm.har")
+# Rewriting the whole archive per response is quadratic and pins the CPU on a
+# busy page. Flush at most once a second, plus once on shutdown.
+_FLUSH_EVERY = 1.0
+_last_flush = 0.0
+
+
+def _flush() -> None:
+    tmp = _OUT + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(_HAR, f)
+    os.replace(tmp, _OUT)
+
+
+def done() -> None:
+    _flush()
+
 
 def response(flow: http.HTTPFlow) -> None:
     req = flow.request
@@ -49,8 +65,11 @@ def response(flow: http.HTTPFlow) -> None:
         },
     }
     _HAR["log"]["entries"].append(entry)
-    with open(_OUT, "w") as f:
-        json.dump(_HAR, f)
+    global _last_flush
+    now = time.monotonic()
+    if now - _last_flush >= _FLUSH_EVERY:
+        _last_flush = now
+        _flush()
 '''
 
 
@@ -61,12 +80,14 @@ class MitmSniffDiscoverer:
         return source == "mitm://proxy"
 
     def discover(self, source: str, **opts: Any) -> APISpec:
-        try:
-            subprocess.run([sys.executable, "-m", "mitmproxy", "--version"], capture_output=True, check=True)
-        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+        # mitmproxy ships console scripts, not runnable modules: `python -m
+        # mitmweb` fails even on a correct install.
+        mitmweb = shutil.which("mitmweb")
+        if mitmweb is None:
             raise RuntimeError(
-                "mitm-sniff requires mitmproxy. Install with: pip install mitmproxy"
-            ) from e
+                "mitm-sniff requires mitmproxy. Install with: "
+                "pip install 'ducktap[sniff]' (or pip install mitmproxy)"
+            )
 
         proxy_port = int(opts.get("proxy_port", 8080))
         timeout = int(opts.get("timeout", 60))
@@ -82,7 +103,7 @@ class MitmSniffDiscoverer:
 
         proc = subprocess.Popen(
             [
-                sys.executable, "-m", "mitmweb",
+                mitmweb,
                 "--listen-port", str(proxy_port),
                 "--web-port", str(proxy_port + 1),
                 "--scripts", str(addon_path),

@@ -9,6 +9,7 @@ auto-generated names so agents can guess them more easily.
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from ducktap.core.spec import APISpec, Operation
@@ -62,22 +63,32 @@ def polish(
     model: str | None = None,
     out_json: Path | None = None,
     descriptions_only: bool = False,
+    concurrency: int = 8,
 ) -> APISpec:
-    """Rewrite operation summaries / descriptions via LLM."""
+    """Rewrite operation summaries / descriptions via LLM.
+
+    One request per operation, issued in parallel: a 300-operation spec run
+    serially is 300 sequential round trips. Any operation whose request fails
+    (no litellm, no API key, rate limit, ...) simply keeps its original text --
+    a partial polish is far more useful than an aborted one.
+    """
     spec = _load_spec(source)
-    for op in spec.operations:
-        prompt = _operation_prompt(op)
+
+    def _polish_one(op: Operation) -> None:
         try:
-            result = chat(prompt, system=DEFAULT_POLISH_SYSTEM, model=model)
-        except RuntimeError:
-            # litellm not installed / no API key — skip gracefully
-            continue
+            result = chat(_operation_prompt(op), system=DEFAULT_POLISH_SYSTEM, model=model)
+        except Exception:  # noqa: BLE001 - provider errors vary wildly
+            return
         # Split result into summary (first line) and description (rest)
         lines = [ln.strip() for ln in result.strip().splitlines() if ln.strip()]
         if lines:
             op.summary = lines[0][:120]
             if not descriptions_only and len(lines) > 1:
                 op.description = " ".join(lines[1:])[:500]
+
+    if spec.operations:
+        with ThreadPoolExecutor(max_workers=max(1, concurrency)) as pool:
+            list(pool.map(_polish_one, spec.operations))
     if out_json:
         out_json.write_text(
             json.dumps(spec.model_dump(by_alias=True), indent=2, default=str),
@@ -96,6 +107,9 @@ def rename(
     """Suggest better operation_ids via LLM.  Returns {old: new} mapping."""
     spec = _load_spec(source)
     mapping: dict[str, str] = {}
+    # A model happily suggests `list_items` for two different operations; the
+    # generators would then emit one command and drop the other.
+    taken = {op.operation_id for op in spec.operations}
     for op in spec.operations:
         # Skip already-clean names (short, no numeric suffixes, readable)
         if len(op.operation_id) < 25 and "_" in op.operation_id and not op.operation_id.endswith("_0"):
@@ -103,12 +117,15 @@ def rename(
         prompt = _rename_prompt(op)
         try:
             new_id = chat(prompt, system=DEFAULT_RENAME_SYSTEM, model=model).strip()
-        except RuntimeError:
+        except Exception:  # noqa: BLE001 - provider errors vary wildly
             continue
         # Sanity: must be valid snake_case and different from current
         new_id = new_id.replace(" ", "_").replace("-", "_").lower()
         new_id = "".join(c if c.isalnum() or c == "_" else "_" for c in new_id).strip("_")
-        if new_id and new_id != op.operation_id and not new_id[0].isdigit():
+        if new_id and new_id != op.operation_id and not new_id[0].isdigit() \
+                and new_id not in taken:
+            taken.discard(op.operation_id)
+            taken.add(new_id)
             mapping[op.operation_id] = new_id
             if not dry_run:
                 op.operation_id = new_id
