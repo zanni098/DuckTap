@@ -9,6 +9,9 @@ When working with {{ spec.display_name or spec.name }}, prefer running the `{{ c
 
 Auth env vars: {% for s in spec.auth_schemes %}`{{ s.env_var }}`{% if not loop.last %}, {% endif %}{% endfor %}.
 
-Commands: {% for op in spec.operations[:20] %}`{{ cli_bin }} {{ op.operation_id | cmd }}`{% if not loop.last %}, {% endif %}{% endfor %}.
+Commands: {% for op in spec.operations[:20] %}`{{ cli_bin }} {{ op | invocation }}`{% if not loop.last %}, {% endif %}{% endfor %}.
+
+Run `{{ cli_bin }} agent-context` for the full machine-readable command list, or
+`{{ cli_bin }} which <keyword>` to look one up.
 
 Add `--pretty` only when showing output to the user. Default JSON is for parsing.

@@ -68,13 +68,18 @@ def press_cmd(
         None, "--archetype", help="Override the detected domain archetype."),
     insight: str | None = typer.Option(
         None, "--insight", help="Supply the Non-Obvious Insight instead of generating one."),
+    use_llm: bool = typer.Option(
+        False, "--llm", help="Let an LLM sharpen the insight (needs the [llm] extra). "
+                             "Off by default so a press stays reproducible."),
     no_llm: bool = typer.Option(
-        False, "--no-llm", help="Skip LLM steps; use the deterministic NOI only."),
+        False, "--no-llm", hidden=True,
+        help="Deprecated: deterministic generation is now the default."),
 ) -> None:
     """One-shot: discover and generate (the default `printing-press` flow)."""
     tgts = [t.strip() for t in targets.split(",") if t.strip()]
     result = press(source, str(out), hint=hint, targets=tgts, name=name,
-                   archetype=archetype, insight=insight, use_llm=not no_llm)
+                   archetype=archetype, insight=insight,
+                   use_llm=use_llm and not no_llm)
     sc = score(result.spec, str(out))
     console.print(f"[bold green]Pressed[/] [bold]{result.spec.name}[/] "
                   f"({len(result.spec.operations)} operations) -> [cyan]{out}[/]")
@@ -355,7 +360,7 @@ def sniff(
 
 
 
-@app.command()
+@app.command("polish")
 def polish_cmd(
     source: str = typer.Argument(..., help="OpenAPI URL/file, HAR file, or existing .apispec.json"),
     out: Path = typer.Option(Path("./polished.json"), "--out", "-o", help="Output APISpec JSON path"),
@@ -369,7 +374,7 @@ def polish_cmd(
     console.print(f"[green]Polished[/] {len(spec.operations)} operations -> {out}")
 
 
-@app.command()
+@app.command("rename")
 def rename_cmd(
     source: str = typer.Argument(..., help="OpenAPI URL/file, HAR file, or existing .apispec.json"),
     out: Path = typer.Option(Path("./renamed.json"), "--out", "-o", help="Output APISpec JSON path"),
@@ -394,7 +399,7 @@ def rename_cmd(
         console.print(f"[green]Wrote[/] renamed spec -> {out}")
 
 
-@app.command()
+@app.command("crowd-sniff")
 def crowd_sniff_cmd(
     api_name: str = typer.Argument(..., help="API or service name to research"),
     model: str | None = typer.Option(None, "--model", help="LiteLLM model override"),
@@ -413,7 +418,7 @@ def crowd_sniff_cmd(
     console.print(result['summary'])
 
 
-@app.command()
+@app.command("publish")
 def publish_cmd(
     name: str = typer.Argument(..., help="CLI slug, e.g. petstore"),
     out_dir: Path = typer.Option(Path("./out"), "--out-dir", "-o"),
@@ -510,7 +515,7 @@ def smoke(
         raise typer.Exit(5)
 
 
-@app.command()
+@app.command("emboss")
 def emboss_cmd(
     name: str = typer.Argument(..., help="CLI slug, e.g. petstore"),
     out_dir: Path = typer.Option(Path("./out"), "--out-dir", "-o"),
@@ -534,7 +539,7 @@ def emboss_cmd(
         console.print(f"[green]Stamped[/] {p}")
 
 
-@app.command()
+@app.command("vision")
 def vision_cmd(
     url: str = typer.Argument(..., help="Website URL to screenshot and read"),
     model: str | None = typer.Option(None, "--model", help="LiteLLM model override"),

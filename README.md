@@ -35,7 +35,9 @@ Scorecard: 87/100 (B)
 
 **Why deterministic?** DuckTap parses the spec and emits code directly — no model in the
 loop. That means no API key, no per-run token cost, reproducible output you can diff and
-review, and generation that runs in CI.
+review, and generation that runs in CI. (An LLM can optionally sharpen the generated
+insight — `ducktap press --llm`, needing the `[llm]` extra — but it is off by default so
+`press` stays reproducible.)
 
 Inspired by [Printing Press](https://printingpress.dev) by
 [@mvanhorn](https://github.com/mvanhorn) — same north star (*muscle memory for agents*).
@@ -70,11 +72,14 @@ pip install ducktap
 ducktap --version
 ```
 
-For browser sniffing (optional):
+The core install is deterministic-only and stays small. Optional extras:
 
 ```bash
-pip install "ducktap[sniff]"
+pip install "ducktap[sniff]"    # browser + proxy sniffing (playwright, mitmproxy)
 playwright install chromium
+pip install "ducktap[llm]"      # optional LLM steps: polish, rename, insight, vision
+pip install "ducktap[search]"   # crowd-sniff web search
+pip install "ducktap[all]"      # everything
 ```
 
 **Requires Python 3.11+.**
@@ -86,7 +91,7 @@ playwright install chromium
 git clone https://github.com/zanni098/DuckTap
 cd DuckTap
 pip install -e ".[dev]"
-python -m pytest tests/ -q   # 86 passed; language compile tests skipped by default
+python -m pytest tests/ -q   # 145 passed; language compile tests skipped by default
 
 # Opt into the heavy compile tests (needs go, cargo, and node installed).
 # These press the fixture into Go/Rust/TS and actually build each project.
@@ -178,9 +183,22 @@ ducktap research <source>       # discover only -- emit normalized APISpec JSON
 ducktap sniff <url>             # browser-sniff a site (needs [sniff] extra)
 ducktap scorecard <source>      # quality scorecard
 ducktap shipcheck <name>        # structural & runtime sanity checks
+ducktap verify <name> -s <src>  # proof of behavior against the spec
+ducktap info                    # read back the provenance manifest
 ducktap catalog list|print      # browse the recipe library
 ducktap plugins list            # show installed discoverers + generators
+ducktap library list|add|search # local registry of printed CLIs
+ducktap macro list|run|new      # compound command macros
+ducktap publish <name>          # push a generated CLI to GitHub + PyPI
+ducktap emboss <name>           # brand-stamp a generated CLI
 ducktap ui                      # local web dashboard
+
+# Optional, need the [llm] extra:
+ducktap insight <source>        # one-sentence Non-Obvious Insight
+ducktap polish|rename <source>  # LLM cleanup of summaries / operation ids
+ducktap absorb <api>            # feature gate against the agent-CLI playbook
+ducktap crowd-sniff <api>       # study community CLIs (needs [search] too)
+ducktap vision <url>            # read a docs page from a screenshot
 ```
 
 ## Plugins

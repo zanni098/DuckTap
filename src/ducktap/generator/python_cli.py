@@ -12,7 +12,6 @@ command framework. The generated CLI:
 """
 from __future__ import annotations
 
-import re
 from pathlib import Path
 from typing import Any
 
@@ -20,11 +19,15 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from ducktap import __version__ as ducktap_version
 from ducktap.core import plugins
-from ducktap.core.naming import cli_command_name, flag_name
+from ducktap.core.naming import (
+    cli_command_name,
+    flag_name,
+    pep440_version,
+    safe_identifier,
+)
 from ducktap.core.spec import APISpec, Operation, Param
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
-_IDENT_RE = re.compile(r"[^A-Za-z0-9_]+")
 
 # Typed per-resource tables per archetype: (table, [(col, type)], text_col, ts_col).
 # Drives the domain-specific SQLite tables + FTS5 in the generated mirror.
@@ -80,12 +83,40 @@ def _archetype_table_ctx(archetype: str) -> dict[str, Any]:
     }
 
 
-def _pyident(s: str) -> str:
-    """Turn an arbitrary string into a safe Python identifier."""
-    out = _IDENT_RE.sub("_", str(s))
-    if out and out[0].isdigit():
-        out = "_" + out
-    return out or "_"
+def cli_params(op: Operation) -> list[dict[str, Any]]:
+    """Assign each parameter a unique CLI flag *and* a unique Python argument.
+
+    Both have to be unique, and they are separate namespaces: two parameters
+    called ``id`` (one in the path, one in the body) are perfectly legal in
+    OpenAPI, but a single ``--id``/``id`` pair means Click hands the command
+    one value where it needs two -- the request is then built with the wrong
+    one, silently. Collisions are disambiguated by parameter location, which
+    keeps the common case (`--id`) untouched.
+    """
+    out: list[dict[str, Any]] = []
+    seen_flags: set[str] = set()
+    seen_dests: set[str] = set()
+    for p in op.params:
+        flag = flag_name(p.name)
+        if flag in seen_flags:
+            flag = flag_name(f"{p.location}-{p.name}")
+        n = 1
+        while flag in seen_flags:
+            n += 1
+            flag = f"{flag_name(f'{p.location}-{p.name}')}-{n}"
+        seen_flags.add(flag)
+
+        dest = safe_identifier(p.name)
+        if dest in seen_dests:
+            dest = safe_identifier(f"{p.location}_{p.name}")
+        n = 1
+        while dest in seen_dests:
+            n += 1
+            dest = safe_identifier(f"{p.location}_{p.name}_{n}")
+        seen_dests.add(dest)
+
+        out.append({"param": p, "flag": flag, "dest": dest})
+    return out
 
 
 def _env() -> Environment:
@@ -141,7 +172,8 @@ class PythonCLIGenerator:
         env.filters["cmd"] = cli_command_name
         env.filters["pytype"] = _python_type
         env.filters["clicktype"] = _click_type
-        env.filters["pyident"] = _pyident
+        env.filters["pyident"] = safe_identifier
+        env.filters["cli_params"] = cli_params
         # repr() yields a valid Python literal for scalars (True/False/None/...)
         env.filters["pyrepr"] = lambda v: repr(v)
 
@@ -158,6 +190,7 @@ class PythonCLIGenerator:
             "cli_bin": cli_bin,
             "operations": spec.operations,
             "ducktap_version": ducktap_version,
+            "package_version": pep440_version(spec.version),
             "path_params": _path_params,
             "query_params": _query_params,
             "body_params": _body_params,

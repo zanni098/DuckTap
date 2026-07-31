@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import click
 
@@ -48,8 +49,8 @@ Auth env vars (set before running):
               help="Disable colored output (also set when --agent is used).")
 @click.option("--cache/--no-cache", default=True,
               help="Use local SQLite mirror for GET requests.")
-@click.option("--cache-ttl", type=int, default=300, show_default=True,
-              help="Mirror TTL in seconds.")
+@click.option("--cache-ttl", type=int, default=None,
+              help="Mirror TTL in seconds (0 disables expiry).  [default: 300]")
 @click.option("--select", "select_fields", default="",
               help="Comma-separated top-level fields to keep in JSON output.")
 @click.option("--compact", is_flag=True, default=False,
@@ -60,30 +61,44 @@ Auth env vars (set before running):
               help="Print the request that would be sent without calling the API.")
 @click.option("--save", "save_collection", default="",
               help="Save successful response records to the local data lake collection.")
-@click.option("--watch", "watch_interval", type=int, default=0, show_default=True,
-              help="Poll the endpoint every N seconds (0 disables).")
+@click.option("--watch", "watch_interval", type=int, default=None,
+              help="Re-run the operation every N seconds until interrupted "
+                   "(0 disables).  [default: 0]")
 @click.option("--debug", is_flag=True, default=False,
               help="Print request/response details to stderr.")
-@click.option("--rate-limit", "rate_limit", type=float, default=0.0,
-              help="Max requests per second across this invocation (0 disables).")
-@click.option("--timeout", "request_timeout", type=float, default=0.0,
-              help="Per-request timeout in seconds (0 keeps the client default).")
+@click.option("--rate-limit", "rate_limit", type=float, default=None,
+              help="Max requests per second across this invocation "
+                   "(0 disables).  [default: 0]")
+@click.option("--timeout", "request_timeout", type=float, default=None,
+              help="Per-request timeout in seconds (0 keeps the client "
+                   "default).  [default: 0]")
 @click.option("--profile", "profile_name", type=str, default=None,
               help="Load saved flag defaults from "
                    "~/.ducktap/{{ spec.name }}/profiles/<name>.json.")
 @click.version_option(version=__import__("{{ pkg_name }}").__version__)
 @click.pass_context
 def cli(ctx: click.Context, agent: bool, output_format: str | None,
-        json_output: bool, no_color: bool, cache: bool, cache_ttl: int,
+        json_output: bool, no_color: bool, cache: bool, cache_ttl: int | None,
         select_fields: str, compact: bool, quiet: bool, dry_run: bool,
-        save_collection: str, watch_interval: int, debug: bool,
-        rate_limit: float, request_timeout: float,
+        save_collection: str, watch_interval: int | None, debug: bool,
+        rate_limit: float | None, request_timeout: float | None,
         profile_name: str | None) -> None:
     ctx.ensure_object(dict)
 
     profile: dict = {}
     if profile_name:
         profile = _load_profile(profile_name)
+
+    def _resolve(flag: Any, key: str, default: Any) -> Any:
+        """Flag wins if given, then the profile, then the built-in default.
+
+        Explicitly passing a falsy value (`--cache-ttl 0`, `--timeout 0`) has
+        to beat the profile, so this tests for None rather than truthiness.
+        """
+        if flag is not None:
+            return flag
+        value = profile.get(key)
+        return default if value is None else value
 
     if agent:
         # Agent mode: turn on JSON, compact, no-color. Quiet stays opt-in.
@@ -103,17 +118,17 @@ def cli(ctx: click.Context, agent: bool, output_format: str | None,
         os.environ["NO_COLOR"] = "1"
 
     ctx.obj["cache"] = cache
-    ctx.obj["cache_ttl"] = cache_ttl or profile.get("cache_ttl", 300)
+    ctx.obj["cache_ttl"] = _resolve(cache_ttl, "cache_ttl", 300)
     select_value = select_fields or profile.get("select", "")
     ctx.obj["select"] = [f.strip() for f in select_value.split(",") if f.strip()]
     ctx.obj["compact"] = compact or profile.get("compact", False)
     ctx.obj["quiet"] = quiet or profile.get("quiet", False)
     ctx.obj["dry_run"] = dry_run
     ctx.obj["save"] = save_collection or profile.get("save", "")
-    ctx.obj["watch"] = watch_interval or profile.get("watch", 0)
+    ctx.obj["watch"] = _resolve(watch_interval, "watch", 0)
     ctx.obj["debug"] = debug or profile.get("debug", False)
-    ctx.obj["rate_limit"] = rate_limit or profile.get("rate_limit", 0.0)
-    ctx.obj["timeout"] = request_timeout or profile.get("timeout", 0.0)
+    ctx.obj["rate_limit"] = _resolve(rate_limit, "rate_limit", 0.0)
+    ctx.obj["timeout"] = _resolve(request_timeout, "timeout", 0.0)
     ctx.obj["profile"] = profile_name
     ctx.obj["profile_data"] = profile
 

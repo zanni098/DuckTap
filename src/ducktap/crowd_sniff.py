@@ -39,8 +39,10 @@ def crowd_sniff(api_name: str, *, model: str | None = None) -> dict[str, Any]:
     for q in queries:
         try:
             raw.extend(_search(q))
-        except RuntimeError:
-            # If search is unavailable, still proceed with LLM if possible
+        except Exception:  # noqa: BLE001
+            # Search being unavailable (not installed, rate limited, offline)
+            # is not fatal -- fall through and let the LLM answer from what it
+            # already knows.
             pass
 
     # De-duplicate by URL
@@ -65,8 +67,11 @@ def crowd_sniff(api_name: str, *, model: str | None = None) -> dict[str, Any]:
 
     try:
         summary = chat(prompt, model=model)
-    except RuntimeError:
-        summary = "LLM unavailable — install litellm and set an API key."
+    except Exception as e:  # noqa: BLE001
+        summary = (
+            "LLM unavailable — install litellm (pip install 'ducktap[llm]') "
+            f"and set an API key. ({type(e).__name__}: {e})"
+        )
 
     return {
         "api": api_name,

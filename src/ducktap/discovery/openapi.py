@@ -39,9 +39,10 @@ class OpenAPIDiscoverer:
 
     def discover(self, source: str, **opts: Any) -> APISpec:
         raw = _load_raw(source)
-        # Resolve $ref references for easier handling
+        # Resolve $ref references for easier handling, then flatten the lazy
+        # proxies into plain data with cycles cut (see `_materialize`).
         try:
-            doc = jsonref.replace_refs(raw, lazy_load=False)
+            doc = _materialize(jsonref.replace_refs(raw, lazy_load=False))
         except Exception:
             doc = raw
 
@@ -108,17 +109,66 @@ class OpenAPIDiscoverer:
         return spec
 
 
+# A spec is fetched from a URL the user names, but that URL is not always
+# trusted (catalog entries, redirects, the local dashboard). Cap the download
+# so a hostile or broken endpoint cannot exhaust memory.
+MAX_SPEC_BYTES = 64 * 1024 * 1024
+
+# Depth at which a resolved schema is truncated. Recursive models ($ref back to
+# an ancestor) are extremely common -- GitHub, Stripe and Notion all ship them
+# -- and jsonref resolves them into a genuinely cyclic object graph.
+_MAX_SCHEMA_DEPTH = 24
+_TRUNCATED: dict[str, Any] = {"type": "object", "x-ducktap-truncated": "recursive $ref"}
+
+
+def _materialize(node: Any, _depth: int = 0, _stack: tuple[int, ...] = ()) -> Any:
+    """Turn a jsonref-resolved document into plain, acyclic, JSON-safe data.
+
+    `jsonref.replace_refs` hands back lazy proxies, and a self-referencing
+    schema becomes an infinite object graph: walking it (to build an MCP input
+    schema, to dump the APISpec, to checksum it) raises RecursionError. Cutting
+    the cycle here -- once, at the boundary -- keeps every downstream consumer
+    simple.
+    """
+    if isinstance(node, dict):
+        if _depth >= _MAX_SCHEMA_DEPTH or id(node) in _stack:
+            return dict(_TRUNCATED)
+        stack = (*_stack, id(node))
+        return {str(k): _materialize(v, _depth + 1, stack) for k, v in node.items()}
+    if isinstance(node, (list, tuple)):
+        if _depth >= _MAX_SCHEMA_DEPTH or id(node) in _stack:
+            return []
+        stack = (*_stack, id(node))
+        return [_materialize(v, _depth + 1, stack) for v in node]
+    if isinstance(node, (str, int, float, bool)) or node is None:
+        return node
+    return str(node)
+
+
 def _load_raw(source: str) -> dict[str, Any]:
     if source.startswith(("http://", "https://")):
-        r = httpx.get(source, follow_redirects=True, timeout=30.0)
-        r.raise_for_status()
-        text = r.text
+        with httpx.stream("GET", source, follow_redirects=True, timeout=30.0) as r:
+            r.raise_for_status()
+            chunks: list[bytes] = []
+            size = 0
+            for chunk in r.iter_bytes():
+                size += len(chunk)
+                if size > MAX_SPEC_BYTES:
+                    raise ValueError(
+                        f"spec at {source} exceeds the {MAX_SPEC_BYTES} byte limit"
+                    )
+                chunks.append(chunk)
+            text = b"".join(chunks).decode(r.encoding or "utf-8", errors="replace")
     else:
         text = Path(source).read_text(encoding="utf-8")
     text_stripped = text.lstrip()
     if text_stripped.startswith("{"):
-        return json.loads(text)
-    return yaml.safe_load(text)
+        doc = json.loads(text)
+    else:
+        doc = yaml.safe_load(text)
+    if not isinstance(doc, dict):
+        raise ValueError(f"{source} is not an OpenAPI document (expected a mapping)")
+    return doc
 
 
 def _is_absolute(url: str) -> bool:

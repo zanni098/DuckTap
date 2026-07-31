@@ -1,5 +1,107 @@
 # Changelog
 
+## 0.8.2 -- 2026-07-31
+
+A correctness, security and packaging pass over the whole repo. No new
+features; several long-standing ways to get silently-wrong output are gone.
+
+### Fixed — generated output was wrong or unusable
+
+- **Recursive `$ref` schemas crashed `press`.** A schema referencing itself
+  (GitHub, Stripe, Notion and most real specs) resolved into a cyclic object
+  graph, and building the MCP tool schema walked it until `RecursionError`.
+  `research` failed the same way with "Circular reference detected". The
+  OpenAPI discoverer now materializes the resolved document into plain,
+  acyclic data once, at the boundary.
+- **A Python keyword as an `operationId` produced a CLI that would not parse**
+  (`operationId: class` → `def class(...)`). Identifiers are now escaped per
+  target language (Python, Go, Rust, TypeScript).
+- **Duplicate operation ids silently dropped operations.** Two operations
+  whose ids collide after snake-casing registered the same Click command, so
+  the second overwrote the first. `APISpec.normalize()` now disambiguates ids
+  for every discoverer.
+- **Two parameters with the same name built the wrong request.** A path `id`
+  and a body `id` shared one Click destination, so the body value landed in
+  the URL and the body field was dropped. Flags and destinations are now
+  disambiguated by location; the wire name is unchanged.
+- **Generated packages could not be installed.** `version` was copied
+  verbatim from `info.version`, so a spec versioned `2022-11-15` produced a
+  `pyproject.toml` / `Cargo.toml` / `package.json` that pip, cargo and npm all
+  reject. Versions are normalized to PEP 440 / semver.
+- **The generated skill documented commands that do not exist.** `SKILL.md`,
+  `cursor.mdc` and `tools.json` listed `<cli> get-pet-by-id --petId`, but
+  operations are grouped by tag and flags are kebab-cased, so the real command
+  is `<cli> pet get-pet-by-id --pet-id`. They now emit the real invocation,
+  the real flags, and the real typed exit codes (they claimed "exit code 1").
+- **`--no-cache` was ignored** whenever `--save` was also passed: cache reads
+  were keyed off the HTTP method alone.
+- **`--watch` did nothing.** The flag was parsed and stored, and never read.
+- **`--cache-ttl 0` / `--timeout 0` / `--rate-limit 0` were ignored**, because
+  an explicit zero lost to the profile fallback in an `or` chain.
+- **The DuckDB mirror backend could not insert.** `records.id` was a primary
+  key with no default (DuckDB has no `AUTOINCREMENT`); it now uses a sequence.
+- **`ducktap publish` never retried a push.** `_step(required=False)` reported
+  `ok=True` unconditionally, so the "repo already exists, push instead"
+  fallback after `gh repo create` was unreachable and a failed publish could
+  report success.
+- **`ducktap vision` never sent the screenshot** — the multi-part content was
+  stringified with `str()`, so the model received the repr of a Python list.
+- **`mitm-sniff` could not run and could not be reached.** It shelled out to
+  `python -m mitmproxy` / `python -m mitmweb`, neither of which exists, and
+  nothing imported the module so the discoverer was invisible. The built-in
+  GraphQL discoverer was unreachable for the same reason.
+- **Six commands were exposed under the wrong name** — `ducktap publish-cmd`,
+  `polish-cmd`, `rename-cmd`, `emboss-cmd`, `vision-cmd`, `crowd-sniff-cmd`.
+  They are now `publish`, `polish`, `rename`, `emboss`, `vision`,
+  `crowd-sniff`.
+- The website's `vercel.json` favicon route used a `:match` placeholder with
+  no capture group, so favicons fell through to the SPA catch-all.
+
+### Fixed — security
+
+- **The dashboard was open to cross-site requests.** Any page in the user's
+  browser could POST to `http://127.0.0.1:8765/generate` and drive the local
+  install into fetching a URL and writing files. `/generate` now requires a
+  per-process CSRF token and rejects cross-site `Sec-Fetch-Site`.
+- **The dashboard rendered untrusted values into HTML unescaped**, server-side
+  (catalog recipes) and client-side (`innerHTML` with the spec's name,
+  archetype and insight). The page moved to an autoescaping template and the
+  client escapes before interpolating.
+- **Generated CLIs leaked credentials across redirects.** httpx strips
+  `Authorization` on a cross-origin redirect but knows nothing about
+  `X-API-Key`; redirects are now followed by hand and only benign headers
+  cross an origin boundary. Redirect chains are bounded.
+- **Path parameters were spliced into the URL unencoded**, so a value like
+  `../admin` retargeted the request. They are percent-encoded.
+- **`<cli> query` enforced read-only with a `startswith("select")` check**,
+  which `WITH ... DELETE` walks straight past. User SQL now runs on a
+  connection SQLite opens read-only; `WITH` queries are supported.
+- `--name` (and the dashboard's name field) could escape the output directory;
+  `APISpec.name` is slugified in one place for every discoverer.
+- Remote spec downloads are capped (64 MiB) instead of being read unbounded.
+- `ducktap emboss` wrote brand strings into `pyproject.toml` without escaping.
+
+### Changed
+
+- **`press` is deterministic by default.** It used to call an LLM unless
+  `--no-llm` was passed, which contradicted the headline claim of byte-for-byte
+  reproducibility. Opt in with `ducktap press --llm`; `--no-llm` still works.
+- **`pip install ducktap` is much smaller.** `litellm` moved to a new `[llm]`
+  extra, `mcp` was dropped (only the *generated* server needs it), and the
+  unused `openapi-spec-validator` dependency was removed. `[all]` installs
+  everything.
+- `ducktap polish` issues its per-operation requests in parallel and no longer
+  aborts the whole run when one of them fails.
+
+### Performance
+
+- The catalog is parsed once and cached against file mtimes; a single
+  dashboard render used to re-read and re-parse every recipe several times.
+- The generated mirror indexes `records` on `saved_at`, `collection` and
+  `(method, path)` — `stale`, `health` and `bottleneck` were full scans.
+- The mitmproxy addon flushes the HAR at most once a second instead of
+  rewriting the whole archive on every response.
+
 ## 0.8.1 -- 2026-06-08
 
 Additive depth + UI polish on top of 0.8.0. (Not the full v0.8.0 "Verification

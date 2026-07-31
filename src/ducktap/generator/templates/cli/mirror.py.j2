@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import pathlib
 import sqlite3
 import time
 from pathlib import Path
@@ -24,6 +25,21 @@ try:
     _Backend = "duckdb"
 except ImportError:
     pass
+
+
+class _StaticCursor:
+    """Already-fetched rows in a cursor-shaped wrapper."""
+
+    def __init__(self, rows: list[Any], description: Any) -> None:
+        self._rows = rows
+        self.description = description
+        self.rowcount = len(rows)
+
+    def fetchall(self) -> list[Any]:
+        return self._rows
+
+    def fetchone(self) -> Any:
+        return self._rows[0] if self._rows else None
 
 
 def _mirror_dir() -> Path:
@@ -44,12 +60,30 @@ class _SQLiteBackend:
     """sqlite3-backed mirror with FTS5 full-text search."""
 
     def __init__(self, path: str) -> None:
+        self.path = path
         self.conn = sqlite3.connect(path)
         self._ensure_tables()
         self.conn.commit()
 
     def execute(self, sql: str, params: tuple[Any, ...] = ()) -> sqlite3.Cursor:
         return self.conn.execute(sql, params)
+
+    def execute_readonly(self, sql: str, params: tuple[Any, ...] = ()) -> sqlite3.Cursor:
+        """Run user-supplied SQL on a connection SQLite itself refuses to write.
+
+        A `startswith("select")` check is a speed bump, not a guarantee -- it
+        misses `WITH ... DELETE`, PRAGMA and ATTACH. Opening the same file in
+        read-only mode pushes the guarantee down into SQLite.
+        """
+        self.conn.commit()
+        ro = sqlite3.connect(f"file:{pathlib.Path(self.path).as_posix()}?mode=ro", uri=True)
+        try:
+            cur = ro.execute(sql, params)
+            rows = cur.fetchall()
+            description = cur.description
+        finally:
+            ro.close()
+        return _StaticCursor(rows, description)
 
     def executemany(self, sql: str, params: list[tuple[Any, ...]]) -> sqlite3.Cursor:
         return self.conn.executemany(sql, params)
@@ -79,6 +113,17 @@ class _SQLiteBackend:
                 saved_at REAL NOT NULL
             )
         """)
+        # `stale`, `bottleneck` and `health` all scan `records`; without these
+        # the local lake degrades to a full table scan per query.
+        self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS records_saved_at ON records(saved_at)"
+        )
+        self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS records_collection ON records(collection)"
+        )
+        self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS records_endpoint ON records(method, path)"
+        )
         # FTS5 virtual table for full-text search over JSON bodies
         self.conn.execute("""
             CREATE VIRTUAL TABLE IF NOT EXISTS records_fts USING fts5(
@@ -154,9 +199,12 @@ class _DuckDBBackend:
                 fetched_at DOUBLE NOT NULL
             )
         """)
+        # DuckDB has no AUTOINCREMENT: an id column with no default would make
+        # every insert fail the primary key's NOT NULL constraint.
+        self.conn.execute("CREATE SEQUENCE IF NOT EXISTS records_id_seq")
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS records (
-                id BIGINT PRIMARY KEY,
+                id BIGINT PRIMARY KEY DEFAULT nextval('records_id_seq'),
                 collection TEXT NOT NULL,
                 method TEXT NOT NULL,
                 path TEXT NOT NULL,
@@ -237,11 +285,23 @@ class Mirror:
         self._db.commit()
         return len(rows)
 
-    def query(self, sql: str) -> list[dict[str, Any]]:
-        """Run a read-only SQL query over saved records."""
-        if not sql.lstrip().lower().startswith("select"):
+    def query(self, sql: str, params: tuple[Any, ...] = ()) -> list[dict[str, Any]]:
+        """Run a read-only SQL query over saved records.
+
+        On sqlite3 this is enforced by the engine (the statement runs on a
+        connection opened `mode=ro`); on duckdb we fall back to a statement
+        prefix check.
+        """
+        head = sql.lstrip().lower()
+        if not (head.startswith("select") or head.startswith("with")):
             raise ValueError("Only SELECT queries are allowed")
-        cur = self._db.execute(sql)
+        run = getattr(self._db, "execute_readonly", self._db.execute)
+        try:
+            cur = run(sql, params)
+        except sqlite3.OperationalError as e:
+            if "readonly" in str(e).lower() or "attempt to write" in str(e).lower():
+                raise ValueError("Only SELECT queries are allowed") from e
+            raise
         cols = [d[0] for d in (cur.description or [])]
         return [dict(zip(cols, row, strict=False)) for row in cur.fetchall()]
 

@@ -92,10 +92,17 @@ def _load_entry_points() -> None:
 
 
 def autoload_builtins() -> None:
-    """Import built-in plugins so they register themselves."""
+    """Import built-in plugins so they register themselves.
+
+    Everything DuckTap ships has to be listed here: `discover()` looks
+    discoverers up by name, so a module nobody imports is a feature that
+    silently does not exist. All of these import their heavy optional
+    dependencies (playwright, mitmproxy) lazily inside `discover`.
+    """
     # Discoverers
     from ducktap.discovery import browser_sniff as _b  # noqa: F401
     from ducktap.discovery import har as _h  # noqa: F401
+    from ducktap.discovery import mitm_sniff as _m  # noqa: F401
     from ducktap.discovery import openapi as _o  # noqa: F401
 
     # Generators
@@ -105,3 +112,4 @@ def autoload_builtins() -> None:
     from ducktap.generator import rust_cli as _rs  # noqa: F401
     from ducktap.generator import skill as _s  # noqa: F401
     from ducktap.generator import typescript_cli as _ts  # noqa: F401
+    from ducktap.plugins.builtin import graphql_intro as _gql  # noqa: F401

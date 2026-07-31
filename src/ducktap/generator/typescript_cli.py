@@ -14,7 +14,12 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from ducktap import __version__ as ducktap_version
 from ducktap.core import plugins
-from ducktap.core.naming import cli_command_name, flag_name
+from ducktap.core.naming import (
+    cli_command_name,
+    flag_name,
+    safe_identifier,
+    semver_version,
+)
 from ducktap.core.spec import APISpec, Operation, Param
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -26,7 +31,7 @@ def _tsident(s: str) -> str:
     out = _IDENT_RE.sub("", str(s))
     if out and out[0].isdigit():
         out = "_" + out
-    return out or "_"
+    return safe_identifier(out or "_", lang="typescript")
 
 
 def _env() -> Environment:
@@ -85,6 +90,7 @@ class TypeScriptCLIGenerator:
             "cli_bin": pkg_name,
             "operations": spec.operations,
             "ducktap_version": ducktap_version,
+            "package_version": semver_version(spec.version),
             "path_params": _path_params,
             "query_params": _query_params,
             "body_params": _body_params,

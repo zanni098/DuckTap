@@ -1,7 +1,7 @@
 ---
 name: {{ skill_name }}
 description: Agent-native CLI for {{ spec.display_name or spec.name }}. Use this to {{ spec.description | replace('\n', ' ') }}
-version: {{ spec.version }}
+version: {{ package_version }}
 allowed-tools:
   - Bash
   - Read
@@ -27,23 +27,38 @@ Set these env vars in your shell or a `.env`:
 
 ```bash
 {{ cli_bin }} --help
+{{ cli_bin }} agent-context           # machine-readable description of every command
+{{ cli_bin }} which <keyword>         # find the command for a task
 {% for op in spec.operations[:10] %}
-{{ cli_bin }} {{ op.operation_id | cmd }} {% for p in op.params if p.required %}--{{ p.name }} <value> {% endfor %}# {{ op.summary or op.description or op.method + ' ' + op.path }}
+{{ cli_bin }} {{ op | invocation }} {% for p in op.params if p.required %}{{ p.name | flag }} <value> {% endfor %}# {{ op.summary or op.description or op.method + ' ' + op.path }}
 {% endfor %}
 ```
 
 ## All commands ({{ spec.operations | length }})
 {% for op in spec.operations %}
-- `{{ cli_bin }} {{ op.operation_id | cmd }}` — {{ op.summary or op.description or op.method + ' ' + op.path }}
+- `{{ cli_bin }} {{ op | invocation }}` — {{ op.summary or op.description or op.method + ' ' + op.path }}
 {% endfor %}
 
 ## Output handling
 
 - Default output is JSON (parseable). Pipe through `jq` for queries.
+- `--agent` turns on JSON + `--compact` + `--no-color` in one flag.
+- `--format json|jsonl|csv|plain|pretty` picks a different shape; `--select id,name` keeps only the fields you need.
 - Add `--pretty` for human-readable output.
-- Add `--no-cache` to bypass the local SQLite mirror.
+- Add `--no-cache` to bypass the local SQLite mirror, `--dry-run` to see the request without sending it.
 
 ## Failure modes
 
-- HTTP errors are emitted as `{"error": ..., "status": ..., "body": ...}` on stderr with exit code 1.
-- Missing auth env vars typically yield 401 — check the auth section above.
+HTTP errors are emitted as `{"error": ..., "status": ..., "body": ...}` on stderr,
+with a typed exit code to branch on:
+
+| exit | meaning |
+|---|---|
+| 0 | success |
+| 3 | 404 not found |
+| 4 | 401/403 — auth missing or rejected (check the env vars above) |
+| 5 | other API error |
+| 7 | 429 rate limited — back off and retry |
+| 10 | local configuration error (no base URL, no such profile) |
+
+Run `{{ cli_bin }} auth-doctor --probe` to find out whether credentials are actually accepted.

@@ -9,6 +9,19 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
+def _toml_str(value: str) -> str:
+    """Render a TOML basic string. A brand name containing a quote or a
+    backslash would otherwise produce a pyproject.toml that no longer parses."""
+    escaped = (
+        value.replace("\\", "\\\\")
+        .replace('"', '\\"')
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t")
+    )
+    return f'"{escaped}"'
+
+
 @dataclass
 class BrandStamp:
     name: str = ""
@@ -29,10 +42,10 @@ class BrandStamp:
             if in_project and line.strip().startswith("[") and not line.strip().startswith("[project]"):
                 in_project = False
             if in_project and "name = " in line and self.name:
-                out.append(f'name = "{self.name}"')
+                out.append(f"name = {_toml_str(self.name)}")
                 continue
             if in_project and "description = " in line and self.description:
-                out.append(f'description = "{self.description}"')
+                out.append(f"description = {_toml_str(self.description)}")
                 continue
             out.append(line)
         path.write_text("\n".join(out) + "\n", encoding="utf-8")
