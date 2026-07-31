@@ -5,6 +5,12 @@
 A correctness, security and packaging pass over the whole repo. No new
 features; several long-standing ways to get silently-wrong output are gone.
 
+> **Note:** 0.8.1 was never tagged, so it never reached PyPI — the latest
+> published release was 0.8.0. Releasing 0.8.2 ships the 0.8.1 work
+> (`ducktap verify`, the rebuilt dashboard) along with everything below. The
+> publish workflow now refuses to run when the tag and the package version
+> disagree.
+
 ### Fixed — generated output was wrong or unusable
 
 - **Recursive `$ref` schemas crashed `press`.** A schema referencing itself

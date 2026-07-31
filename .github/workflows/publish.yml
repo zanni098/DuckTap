@@ -17,6 +17,19 @@ jobs:
           python-version: "3.12"
       - name: Install build deps
         run: python -m pip install --upgrade pip build twine
+      - name: Check the tag matches the package version
+        # A tag that disagrees with pyproject.toml publishes a surprise version
+        # to PyPI, and PyPI releases cannot be replaced. Fail loudly instead.
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          set -e
+          pkg=$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$pkg" != "$tag" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match pyproject version $pkg"
+            exit 1
+          fi
+          echo "tag $GITHUB_REF_NAME matches version $pkg"
       - name: Build
         run: python -m build
       - name: Twine check
