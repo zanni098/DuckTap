@@ -12,34 +12,36 @@ agent skill manifests.
 Where they diverge:
 
 - **Printing Press** optimizes for Claude Code (the harness it tests against) and ships everything as a single Go binary plus distributed skills. Performance and single-binary deployment are first-class.
-- **DuckTap** optimizes for *hackability and multi-agent reach*: hot-editable Python, multi-LLM via LiteLLM, plugins via entry points, multiple skill formats, and a local web dashboard for visual workflows.
+- **DuckTap** optimizes for *determinism and multi-agent reach*: it parses the spec and emits code with no model in the loop, so the same input yields the same output and generation fits in CI. On top of that: hot-editable Python, plugins via entry points, multiple skill formats, four output languages, and a local web dashboard. (LLM steps exist, but they are opt-in and live in the `[llm]` extra.)
 
 ## Feature matrix
 
-| Capability | Printing Press 4.x | DuckTap 0.8.0 | Notes |
+| Capability | Printing Press 4.x | DuckTap 0.8.2 | Notes |
 |---|---|---|---|
 | Non-Obvious Insight (NOI) | ✓ (LLM) | ✓ (v0.8) | DuckTap: archetype-driven deterministic NOI + optional LLM; `ducktap insight`. |
 | Domain archetype detection | ✓ | ✓ (v0.8) | 5 archetypes, deterministic; drives typed tables. |
 | Ecosystem absorb gate | ✓ | ✓ (v0.8) | `ducktap absorb` + `--check` mechanical must_match gate. |
 | Typed per-resource SQLite tables | ✓ | ✓ (v0.8) | Per-archetype table + FTS5 over the natural text column. |
 | Provenance manifest | ✓ | ✓ (v0.8) | `.ducktap.json`; read by `ducktap info`. |
-| OpenAPI 2/3 → CLI | ✓ | ✓ | Both via `kin-openapi`/`openapi-spec-validator`. |
+| Deterministic generation (same spec → same bytes) | ✗ (fresh model run) | **✓** | DuckTap's core bet; `press` needs no model or API key. |
+| OpenAPI 2/3 → CLI | ✓ | ✓ | PP via `kin-openapi`; DuckTap parses directly (`jsonref` + `pyyaml`), cutting `$ref` cycles. |
 | HAR → CLI | ✓ | ✓ | DuckTap clusters by `(method, generalized_path, host)`. |
 | Browser-sniff → CLI | ✓ (custom) | ✓ (Playwright) | DuckTap exposes raw Playwright actions for scripting. |
-| GraphQL introspection → CLI | partial | ✓ (plugin) | First-class in DuckTap v0.3. |
-| Crowd-sniff (study community CLIs) | ✓ | ⌛ v0.3 | |
+| GraphQL introspection → CLI | partial | ✓ (plugin) | First-class in DuckTap v0.3; actually reachable as of v0.8.2. |
+| Crowd-sniff (study community CLIs) | ✓ | ✓ (v0.3) | `ducktap crowd-sniff`; needs the `[llm]` + `[search]` extras. |
 | Generated CLI runtime | Go single binary | Python pip-installable | DuckTap CLIs are hackable; PP CLIs are 5-15MB single binaries. |
 | Local SQLite mirror | ✓ | ✓ | Same TTL+cache-key model. |
 | MCP server output | ✓ | ✓ | Both stdio. DuckTap uses official `mcp` Python SDK. |
 | Claude Code skill | ✓ | ✓ | Both produce `SKILL.md` with YAML frontmatter. |
 | Cursor `.mdc` skill | ⌛ | ✓ | |
 | Generic `tools.json` | ⌛ | ✓ | For non-Claude agent harnesses. |
-| Multi-LLM (OpenAI/Gemini/Ollama) | ✗ (Claude) | ✓ | Via LiteLLM. |
-| Scorecard | ✓ | ✓ | DuckTap: 6 dimensions, deterministic, no LLM needed. |
+| Multi-LLM (OpenAI/Gemini/Ollama) | ✗ (Claude) | ✓ | Via LiteLLM, in the optional `[llm]` extra. |
+| Scorecard | ✓ | ✓ | DuckTap: 7 dimensions, deterministic, no LLM needed. |
+| Proof of behavior | curated demos | ✓ (v0.8.1) | `ducktap verify`: 4 mechanical proofs against the spec. |
 | Shipcheck | ✓ | ✓ | DuckTap parses generated Python with `ast`. |
-| Polish (LLM rewrite) | ✓ | ⌛ v0.2 | |
+| Polish (LLM rewrite) | ✓ | ✓ (v0.2) | `ducktap polish` / `rename`; requests run in parallel. |
 | Auth-doctor | ✓ | ✓ (v0.2.2) | See dedicated row below for behavior details. |
-| Vision (LLM screenshot OCR) | ✓ | ⌛ v0.3 | |
+| Vision (LLM screenshot OCR) | ✓ | ✓ (v0.6) | `ducktap vision`. |
 | Plugin system | source fork | entry points | Drop-in PyPI plugins in DuckTap. |
 | Web UI / dashboard | ✗ | ✓ | `ducktap ui`. |
 | Catalog size | 30+ recipes | **30 entries** (v0.6.0) | DuckTap catalog is open YAML; PR to add. |
@@ -59,6 +61,8 @@ Where they diverge:
 | `agent-context` in every generated language | Go | ✓ all 4 (v0.7) | JSON self-introspection manifest. |
 | Typed exit codes in every generated language | Go | ✓ all 4 (v0.7) | `3`/`4`/`5`/`7` from HTTP status. |
 | Local SQLite mirror + FTS5 in non-Python CLIs | n/a | Python only (Go/TS/Rust: ⌛) | Tracked post-0.7. |
+| Credentials stripped on cross-origin redirect | unknown | ✓ (v0.8.2) | Generated clients follow redirects by hand; only benign headers cross an origin. |
+| Read-only enforcement on local SQL | n/a | ✓ (v0.8.2) | `<cli> query` runs on a connection SQLite opens `mode=ro`. |
 
 ## When to pick which
 
@@ -69,11 +73,19 @@ Where they diverge:
 - You want the largest catalog of pre-printed CLIs immediately.
 
 **Pick DuckTap if:**
+- **You already have an OpenAPI/HAR spec** and want generation to be a build step:
+  reproducible, reviewable as a diff, no API key, no per-run token cost.
+- You need the same API in several languages (Python/Go/Rust/TypeScript) from one source.
 - You want Python (easy to read, hack, embed).
-- You use Cursor, OpenAI/Gemini/Ollama, or mix multiple harnesses.
+- You use Cursor, OpenAI/Gemini/Ollama, or mix multiple harnesses — or no harness at all.
 - You want a plugin ecosystem rather than a monorepo.
 - You want a local dashboard for non-CLI users on your team.
 - You want to fork minimal code to add a new discoverer or generator.
+
+The short version: if you don't have a spec, Printing Press's prompt-driven path
+gets you further faster. If you do, DuckTap turns it into something you can pin
+in CI. See [`ducktap-vs-printing-press.md`](ducktap-vs-printing-press.md) for the
+narrative version of this.
 
 Both projects are MIT-licensed and the design ideas flow freely. DuckTap will
 upstream improvements to Printing Press where it makes sense, and adopts the

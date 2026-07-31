@@ -56,7 +56,8 @@
         </h1>
         <p class="hero-desc">
           DuckTap prints agent-native CLIs, MCP servers, and skills from any OpenAPI spec,
-          HAR file, or website. No bespoke code required.
+          HAR file, or website — deterministically. Same spec in, same code out, every
+          time. No model in the loop, no API key, runs in CI.
         </p>
         <div class="hero-ctas">
           <a href="#install" class="btn btn-primary">Get Started</a>
@@ -70,7 +71,7 @@
         </div>
         <div class="hero-meta">
           <a class="badge" id="pypi-version" href="https://pypi.org/project/ducktap/" target="_blank"
-            rel="noopener"><span class="dot"></span><span class="badge-text">v0.7.0 on PyPI</span></a>
+            rel="noopener"><span class="dot"></span><span class="badge-text">v0.8.2 on PyPI</span></a>
           <span class="badge"><span class="dot"></span>MIT Licensed</span>
         </div>
       </div>
@@ -94,15 +95,16 @@
           <div class="tline"><span class="prompt">$</span> <span class="cmd">ducktap press</span> <span
               class="arg">https://petstore3.swagger.io/api/v3/openapi.yaml</span></div>
           <div class="tline out">Pressed petstore (19 operations) -> out</div>
-          <div class="tline out"> python-cli: 10 files</div>
+          <div class="tline out"> python-cli: 11 files</div>
           <div class="tline out"> mcp-server: 5 files</div>
           <div class="tline out"> skill: 3 files</div>
           <div class="tline out blank"></div>
-          <div class="tline out highlight">Scorecard: 92/100 (A)</div>
+          <div class="tline out highlight">Scorecard: 87/100 (B)</div>
           <div class="tline out"> - coverage: 95 -- 19 operations exposed</div>
           <div class="tline out"> - documentation: 100 -- 19/19 operations have docs</div>
           <div class="tline out"> - auth: 100 -- 2 auth scheme(s)</div>
-          <div class="tline out"> - artifacts: 100 -- 3/3 dirs present</div>
+          <div class="tline out"> - artifacts: 100 -- 3/3 expected artifact dirs present</div>
+          <div class="tline out"> - domain_correctness: 72 -- restful=66, responses=100</div>
           <div class="tline"><span class="prompt">$</span> <span class="cursor">|</span></div>
         </div>
       </div>
@@ -119,31 +121,34 @@
       <div class="feature-grid">
         <div class="feature-card">
           <div class="feature-num">01</div>
-          <h3>OpenAPI & HAR</h3>
-          <p>Point at a spec or recorded browser traffic. DuckTap normalizes every endpoint into a clean, agent-friendly
-            CLI.</p>
+          <h3>Deterministic</h3>
+          <p>No model in the loop. The same spec produces byte-identical output every run, so generation is a build
+            step you can diff, review, and pin in CI — with no API key and no token cost.</p>
         </div>
         <div class="feature-card">
           <div class="feature-num">02</div>
-          <h3>Browser Sniffing</h3>
-          <p>No public API? No problem. Playwright drives the site, captures traffic, and reverse-engineers a CLI from
-            the HAR.</p>
+          <h3>OpenAPI, HAR & GraphQL</h3>
+          <p>Point at a spec, recorded browser traffic, or a GraphQL endpoint. Every input normalizes into one
+            APISpec that all generators consume.</p>
         </div>
         <div class="feature-card">
           <div class="feature-num">03</div>
-          <h3>MCP Server</h3>
-          <p>Every printed CLI ships with a matching MCP server. Drop it into Claude Desktop, Cursor, or any MCP-aware
-            agent.</p>
+          <h3>Four Languages</h3>
+          <p>One spec, a Python, Go, Rust, or TypeScript CLI. Each is compiled in CI — <code>go build</code>,
+            <code>cargo build</code>, <code>tsc</code> — so the templates can't silently drift.
+          </p>
         </div>
         <div class="feature-card">
           <div class="feature-num">04</div>
-          <h3>Multi-Agent Skills</h3>
-          <p>Claude Code SKILL.md, Cursor .mdc rules, and a generic tools.json — every harness can invoke your CLI.</p>
+          <h3>MCP Server & Skills</h3>
+          <p>Every printed CLI ships a matching MCP server plus Claude Code SKILL.md, Cursor .mdc rules, and a generic
+            tools.json — so any harness, or none, can drive it.</p>
         </div>
         <div class="feature-card">
           <div class="feature-num">05</div>
-          <h3>Multi-LLM</h3>
-          <p>Via LiteLLM: Claude, GPT-4, Gemini, local Ollama, Groq, Azure. Pick your model with an env var.</p>
+          <h3>Proof of Behavior</h3>
+          <p>A scorecard grades the surface; <code>ducktap verify</code> mechanically proves the generated CLI matches
+            the spec — no hallucinated paths, every operation reachable, auth headers correct.</p>
         </div>
         <div class="feature-card">
           <div class="feature-num">06</div>
@@ -232,6 +237,12 @@
             <button class="copy-btn"
               data-copy="ducktap press https://petstore3.swagger.io/api/v3/openapi.yaml --out ./out">Copy</button>
           </div>
+          <div class="install-label" style="margin-top:1.25rem">Optional extras</div>
+          <div class="code-block">
+            <code>pip install "ducktap[sniff]" &nbsp;# browser + proxy sniffing<br>pip install "ducktap[llm]"
+              &nbsp;&nbsp;&nbsp;# optional LLM steps<br>pip install "ducktap[all]"</code>
+            <button class="copy-btn" data-copy="pip install &quot;ducktap[all]&quot;">Copy</button>
+          </div>
         </div>
       </div>
     </div>
@@ -256,45 +267,54 @@
           </thead>
           <tbody>
             <tr>
-              <td>Language</td>
-              <td>Go</td>
-              <td class="dt-col">Python</td>
+              <td>How it generates</td>
+              <td>Prompt-driven, inside Claude Code</td>
+              <td class="dt-col">Deterministic — parses the spec, emits code</td>
             </tr>
             <tr>
-              <td>LLM support</td>
-              <td>Claude only</td>
-              <td class="dt-col">Claude / GPT / Gemini / Ollama / Groq / Azure</td>
+              <td>Same input &rarr; same output</td>
+              <td>Fresh model run each time</td>
+              <td class="dt-col">Byte-for-byte, diffable, CI-friendly</td>
+            </tr>
+            <tr>
+              <td>What it needs to run</td>
+              <td>Go + Node + Claude Code</td>
+              <td class="dt-col">A Python interpreter</td>
+            </tr>
+            <tr>
+              <td>Primary input</td>
+              <td>A prompt, app name, or website</td>
+              <td class="dt-col">OpenAPI / HAR / GraphQL (browser sniff for the rest)</td>
+            </tr>
+            <tr>
+              <td>Output languages</td>
+              <td>Go</td>
+              <td class="dt-col">Python, Go, Rust, TypeScript</td>
             </tr>
             <tr>
               <td>Agent skills</td>
-              <td>Claude Code</td>
+              <td>Claude Code + OpenClaw</td>
               <td class="dt-col">Claude + Cursor + generic tools.json</td>
             </tr>
             <tr>
-              <td>Web dashboard</td>
-              <td>&mdash;</td>
-              <td class="dt-col">FastAPI UI included</td>
+              <td>Community library</td>
+              <td>250+ CLIs, 17 categories</td>
+              <td class="dt-col">30-API catalog (nascent)</td>
             </tr>
             <tr>
-              <td>Plugin system</td>
-              <td>Source fork</td>
-              <td class="dt-col">Entry-point PyPI plugins</td>
-            </tr>
-            <tr>
-              <td>Browser sniff</td>
-              <td>Custom Go browser</td>
-              <td class="dt-col">Playwright + scriptable actions</td>
-            </tr>
-            <tr>
-              <td>Generated CLI</td>
-              <td>Single Go binary</td>
-              <td class="dt-col">Python (pip-installable, hackable)</td>
+              <td>Maturity</td>
+              <td>Established, real traction</td>
+              <td class="dt-col">New, solo, unproven</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p class="comp-note">Both are MIT-licensed. Both print a CLI, an MCP server, and a skill. DuckTap optimizes for
-        hackability and multi-agent reach; Printing Press optimizes for single-binary deployment.</p>
+      <p class="comp-note">Both are MIT-licensed. Both print a CLI, an MCP server, and a skill. Printing Press is the
+        better choice for prompt-driven, Claude-Code-native generation from a big curated library — and it has the head
+        start. Reach for DuckTap when you already have a spec and want reproducible, language-flexible,
+        harness-independent generation you can run in a pipeline. <a
+          href="https://github.com/zanni098/DuckTap/blob/main/docs/ducktap-vs-printing-press.md" target="_blank"
+          rel="noopener">Read the honest comparison &rarr;</a></p>
     </div>
   </section>
 
