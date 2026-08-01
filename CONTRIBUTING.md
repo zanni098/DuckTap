@@ -31,7 +31,16 @@ won't raise an error; it will just quietly drop the value. Run
 the right category.
 
 `category` values currently in use: `ai`, `collaboration`, `commerce`,
-`devtools`, `infra`, `payments`, `productivity`, `media`, `data`.
+`developer`, `entertainment`, `example`, `finance`, `maps`, `marketing`,
+`monitoring`, `payments`, `productivity`, `project-management`,
+`sales-and-crm`, `social`, `social-and-messaging`, `support`.
+
+Reproduce this list with:
+
+```python
+from ducktap.catalog.registry import load_catalog
+sorted({e.category for e in load_catalog().values()})
+```
 
 `spec_url` must point at a **machine-readable spec** — a `.json`/`.yaml` OpenAPI
 document or a HAR file. An HTML documentation page will not work. Use
