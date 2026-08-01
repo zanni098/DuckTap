@@ -67,6 +67,8 @@ def test_petstore_detects_a_valid_archetype():
     from ducktap.core.pipeline import discover
     spec = discover(str(FIXTURE), name="petstore")
     assert detect_archetype(spec) in (*ARCHETYPES, "unknown")
+    # A generic CRUD demo has no real domain -- see test_archetype_calibration.
+    assert detect_archetype(spec) == "unknown"
 
 
 # --------------------------------------------------------------------------- #
