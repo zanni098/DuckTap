@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.8.3 -- 2026-08-02
+
+One fix, but it removes a claim DuckTap should never have been making.
+
+### Fixed
+
+- **`press` asserted a business domain it had not established.** Pressing the
+  Swagger Petstore -- the spec in the README quickstart and on the website --
+  reported `archetype: payments` and then wrote "Swagger Petstore isn't just a
+  payment processor. It's a revenue observatory. Every charge is a signal about
+  customer lifetime value, churn risk, and dispute exposure."
+
+  Archetype detection committed to a domain on raw keyword score alone, so one
+  ambiguous word repeated across a single resource was enough to reach a
+  verdict. Petstore scored 13 for `payments`; 12 of that came from the word
+  `order` in `/store/order`.
+
+  The claim was not confined to the console. It was written into every
+  generated CLI's README and into the `agent_context` payload that agents read
+  as ground truth, and the `payments` archetype emitted a typed `charges`
+  table, FTS5 index and triggers into a pet store CLI.
+
+  `detect_archetype` now requires the evidence to be spread out as well as
+  strong: at least 3 distinct keywords must fire, and no single keyword may
+  account for more than 80% of the score. Calibrated against live specs --
+  Stripe (`payments`, 19 distinct keywords, 0.20 concentration) and GitHub
+  (`project_management`, 10, 0.53) are unchanged; Petstore (2, 0.92) now
+  resolves to `unknown` and routes to the existing generic insight template.
+
+  Detection remains deterministic: no LLM, no network. Specs with real domain
+  evidence classify exactly as before. ([#38](https://github.com/zanni098/DuckTap/issues/38))
+
+### Documentation
+
+- The README sample-output blocks predated v0.8.0 and omitted the `archetype`
+  and `insight` lines `press` prints. The scores in them (`87/100`,
+  `base_url=50`) were correct and are unchanged -- that block presses a local
+  file, which scores `base_url` lower than pressing a hosted spec URL.
+- The website hero terminal showed a URL press with the numbers from a
+  local-file press. Corrected to `91/100 (A)` / `domain_correctness: 88`, which
+  is what that command actually produces. ([#42](https://github.com/zanni098/DuckTap/pull/42))
+
 ## 0.8.2 -- 2026-07-31
 
 A correctness, security and packaging pass over the whole repo. No new
