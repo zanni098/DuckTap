@@ -19,6 +19,10 @@
 ```text
 $ ducktap press ./openapi.yaml --name petstore
 Pressed petstore (19 operations) -> out
+  archetype: unknown
+  insight: Swagger Petstore - OpenAPI 3.0 isn't just a set of endpoints. It's a
+           queryable view of a live system. Every record is a signal about
+           state, freshness, and change over time.
   python-cli: 11 files
   mcp-server: 5 files
   skill:      3 files
@@ -125,6 +129,10 @@ Running `ducktap press` prints something like:
 
 ```
 Pressed petstore (19 operations) -> ./out
+  archetype: unknown
+  insight: Swagger Petstore - OpenAPI 3.0 isn't just a set of endpoints. It's a
+           queryable view of a live system. Every record is a signal about
+           state, freshness, and change over time.
   python-cli: 11 files
   mcp-server: 5 files
   skill:      3 files
