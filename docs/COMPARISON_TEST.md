@@ -304,7 +304,7 @@ To be fair, DuckTap is genuinely ahead on a few axes:
 | **Cursor `.mdc` skill format** | ✅ DuckTap |
 | **Generic `tools.json` for arbitrary agent harnesses** | ✅ DuckTap |
 | **Pip-installable generated CLIs** (no separate binary) | ✅ DuckTap |
-| **Website** | ✅ Both (PP: printingpress.dev; DT: ducktap-website.vercel.app) |
+| **Website** | ✅ Both (PP: printingpress.dev; DT: duck-tap.vercel.app) |
 | **PyPI distribution** | ✅ DuckTap (PP is `go install` only) |
 
 **Note on multi-LLM:** the abstraction is there (`ducktap.llm.base`) but no command currently *uses* it. PP has `--polish` which actually calls Claude/Codex to rewrite descriptions; DuckTap's `polish` is a v0.2 roadmap item.
