@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter
+from typing import NamedTuple
 
 from ducktap.core.spec import APISpec
 
@@ -26,6 +27,20 @@ ARCHETYPES = (
 
 # Minimum weighted score before we commit to an archetype (else "unknown").
 _MIN_SCORE = 4
+
+# A raw score is not enough on its own: a single ambiguous keyword repeated
+# across one resource can clear _MIN_SCORE by itself. The Swagger Petstore, for
+# example, scored 13 for "payments" -- 12 of which came from the word "order"
+# in `/store/order`. To commit to an archetype we also require the evidence to
+# be *spread out*: several different keywords must fire, and no single keyword
+# may account for nearly all of the score.
+#
+# Calibrated against real specs (see tests/test_archetype_calibration.py):
+#   stripe   payments           score=1610 distinct=19 concentration=0.20  -> keep
+#   github   project_management score= 949 distinct=10 concentration=0.53  -> keep
+#   petstore payments           score=  13 distinct= 2 concentration=0.92  -> reject
+_MIN_DISTINCT_SIGNALS = 3
+_MAX_SIGNAL_CONCENTRATION = 0.8
 
 # Resource keywords, matched against path segments / tags / operation ids.
 _RESOURCE_SIGNALS: dict[str, list[str]] = {
@@ -84,8 +99,32 @@ def _count(tokens: Counter[str], keyword: str) -> int:
     return tokens.get(keyword, 0) + tokens.get(keyword + "s", 0)
 
 
-def archetype_scores(spec: APISpec) -> dict[str, int]:
-    """Weighted match score per archetype (resource hits count double)."""
+class Evidence(NamedTuple):
+    """How strongly -- and how broadly -- one archetype matched a spec."""
+
+    score: int
+    """Weighted keyword score (resource hits count double)."""
+    distinct: int
+    """How many different keywords fired at least once."""
+    top_points: int
+    """Points contributed by the single highest-scoring keyword."""
+
+    @property
+    def concentration(self) -> float:
+        """Share of the score owed to one keyword (1.0 = a single keyword)."""
+        return self.top_points / self.score if self.score else 0.0
+
+    def is_conclusive(self) -> bool:
+        """True when the evidence is strong *and* spread across keywords."""
+        return (
+            self.score >= _MIN_SCORE
+            and self.distinct >= _MIN_DISTINCT_SIGNALS
+            and self.concentration <= _MAX_SIGNAL_CONCENTRATION
+        )
+
+
+def archetype_evidence(spec: APISpec) -> dict[str, Evidence]:
+    """Per-archetype match evidence: score, keyword spread, and concentration."""
     resource_text = " ".join(
         [op.path for op in spec.operations]
         + [op.operation_id for op in spec.operations]
@@ -95,20 +134,39 @@ def archetype_scores(spec: APISpec) -> dict[str, int]:
     resource_tokens = _tokens(resource_text)
     field_tokens = _tokens(field_text)
 
-    scores: dict[str, int] = {a: 0 for a in ARCHETYPES}
+    evidence: dict[str, Evidence] = {}
     for archetype in ARCHETYPES:
-        for kw in _RESOURCE_SIGNALS[archetype]:
-            scores[archetype] += 2 * _count(resource_tokens, kw)
-        for kw in _FIELD_SIGNALS[archetype]:
-            scores[archetype] += 1 * _count(field_tokens, kw)
-    return scores
+        score = distinct = top_points = 0
+        for kw, tokens, weight in (
+            *((k, resource_tokens, 2) for k in _RESOURCE_SIGNALS[archetype]),
+            *((k, field_tokens, 1) for k in _FIELD_SIGNALS[archetype]),
+        ):
+            points = weight * _count(tokens, kw)
+            if points:
+                score += points
+                distinct += 1
+                top_points = max(top_points, points)
+        evidence[archetype] = Evidence(score, distinct, top_points)
+    return evidence
+
+
+def archetype_scores(spec: APISpec) -> dict[str, int]:
+    """Weighted match score per archetype (resource hits count double)."""
+    return {a: e.score for a, e in archetype_evidence(spec).items()}
 
 
 def detect_archetype(spec: APISpec) -> str:
-    """Return the best-matching archetype, or ``"unknown"`` if none is clear."""
-    scores = archetype_scores(spec)
-    best = max(ARCHETYPES, key=lambda a: scores[a])
-    return best if scores[best] >= _MIN_SCORE else "unknown"
+    """Return the best-matching archetype, or ``"unknown"`` if none is clear.
+
+    An archetype is only returned when its evidence is conclusive: a high
+    enough score, drawn from several distinct keywords, and not dominated by
+    any single one. Anything less stays ``"unknown"`` -- a generic CRUD API
+    should not be described as a payment processor because it happens to have
+    an ``/order`` endpoint.
+    """
+    evidence = archetype_evidence(spec)
+    best = max(ARCHETYPES, key=lambda a: evidence[a].score)
+    return best if evidence[best].is_conclusive() else "unknown"
 
 
 # Natural-language / FTS text column for each archetype's primary resource.
