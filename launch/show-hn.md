@@ -36,9 +36,9 @@ in CI and code-review the diff.
 It's openly inspired by Matt Van Horn's Printing Press, which makes the opposite
 bet — prompt-driven generation inside Claude Code, with a great community library.
 I wanted the spec-first, reproducible, harness-independent version. I wrote an
-honest comparison of when to use which here: [link to docs/ducktap-vs-printing-press.md]
+honest comparison of when to use which here: https://github.com/zanni098/DuckTap/blob/main/docs/ducktap-vs-printing-press.md
 
-It's early (v0.6, alpha, solo) and I'd genuinely like to know where it breaks.
+It's early (v0.8, alpha, solo) and I'd genuinely like to know where it breaks.
 What would make this useful in your agent setup — and what's missing? 30-second
 demo GIF is at the top of the README.
 
