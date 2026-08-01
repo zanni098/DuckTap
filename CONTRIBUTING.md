@@ -14,17 +14,31 @@ API; check the [open issues](https://github.com/zanni098/DuckTap/issues?q=is%3Ao
 
 ```yaml
 # catalog/yourapi.yaml
-name: yourapi
+name: yourapi                          # required — lowercase, matches the filename
+display_name: Your API                 # human-readable name
 description: One sentence — what does this API do?
-spec_url: https://example.com/openapi.yaml   # or a HAR file URL
-home_url: https://example.com
-auth:
-  type: bearer          # bearer | apikey | basic | oauth2 | none
-  env_var: YOURAPI_KEY  # env var agents should set
-tags:
-  - productivity        # pick from: productivity, devtools, payments,
-                        # messaging, ai, data, infra, crm, media, other
+category: devtools                     # see the list below
+spec_url: https://example.com/openapi.yaml
+spec_format: yaml                      # json | yaml | har | sniff
+tier: official                         # official | community
+homepage: https://example.com/docs
 ```
+
+**Fields** are defined by `CatalogEntry` in `src/ducktap/catalog/registry.py` —
+that model is the source of truth. Unknown keys are silently ignored, so a typo
+won't raise an error; it will just quietly drop the value. Run
+`ducktap catalog list` after adding your file and confirm your entry appears with
+the right category.
+
+`category` values currently in use: `ai`, `collaboration`, `commerce`,
+`devtools`, `infra`, `payments`, `productivity`, `media`, `data`.
+
+`spec_url` must point at a **machine-readable spec** — a `.json`/`.yaml` OpenAPI
+document or a HAR file. An HTML documentation page will not work. Use
+`spec_path` instead if the spec lives in this repo, or `sniff_url` if the API has
+no published spec and needs browser sniffing.
+
+Copy [`catalog/stripe.yaml`](catalog/stripe.yaml) as a working reference.
 
 Open a PR titled `catalog: add <yourapi>`. That's it.
 
@@ -43,7 +57,7 @@ Verify everything works:
 
 ```bash
 ducktap --version
-python -m pytest tests/ -q     # should be 44 passed, 0 failed
+python -m pytest tests/ -q     # all tests should pass
 ```
 
 ---
@@ -54,7 +68,7 @@ python -m pytest tests/ -q     # should be 44 passed, 0 failed
 src/ducktap/
 ├── core/           APISpec pydantic model + pipeline runner
 ├── discovery/      OpenAPI, HAR, browser-sniff discoverers
-├── generator/      python-cli, mcp-server, skill generators + Jinja2 templates
+├── generator/      python/go/rust/typescript CLI, mcp-server, skill generators
 │   └── templates/
 │       ├── cli/    commands.py.j2, client.py.j2, main.py.j2, …
 │       ├── mcp/    server.py.j2
@@ -62,8 +76,10 @@ src/ducktap/
 ├── verify/         scorecard + shipcheck
 ├── catalog/        catalog loader (YAML files live at repo root /catalog/)
 ├── plugins/        plugin registry + built-in GraphQL plugin
-├── llm/            LiteLLM abstraction (used by polish step, v0.2.x)
-└── webui/          FastAPI dashboard
+├── llm/            LiteLLM abstraction (used by polish step)
+├── webui/          FastAPI dashboard
+└── *.py            top-level commands: macros, publish, emboss, library,
+                    absorb, insight, vision, manifest, crowd_sniff
 catalog/            one YAML file per API
 tests/
 docs/
@@ -93,7 +109,7 @@ docs/
 | Bug fix | [open issues](https://github.com/zanni098/DuckTap/issues) | Link the issue in your PR |
 | New discoverer (e.g. Postman) | `src/ducktap/discovery/` | Must implement `Discoverer` protocol, add test |
 | Template improvement | `src/ducktap/generator/templates/` | Run `ducktap press tests/fixtures/petstore.yaml` and eyeball the diff |
-| New generator (e.g. TypeScript CLI) | `src/ducktap/generator/` | See `python_cli.py` as the reference implementation |
+| New generator (e.g. Ruby, C#) | `src/ducktap/generator/` | Python/Go/Rust/TypeScript already exist — see `python_cli.py` as the reference |
 | Scorecard dimension | `src/ducktap/verify/scorecard.py` | Add a test that exercises the new dimension |
 | Dashboard feature | `src/ducktap/webui/` | FastAPI + vanilla JS, no bundler |
 
@@ -120,6 +136,28 @@ chore: bump ruff to 0.9
 ```
 
 One subject line, imperative mood, under 72 chars. Body optional.
+
+---
+
+## What gets merged
+
+Merged readily, no discussion needed first:
+
+- Catalog entries, and fixes to broken ones
+- Template fixes and improvements to generated output
+- Documentation, including fixes to this file
+- Tests, especially ones that cover an untested edge case
+- Plugins and new discoverers that follow the existing protocol
+
+Please open an issue before writing code for:
+
+- Anything adding a **required** dependency (optional extras are easier)
+- Changes to the `APISpec` model in `core/spec.py` — everything downstream reads it
+- Anything that makes `ducktap press` non-deterministic. Determinism is the whole
+  point of the project; an LLM call in the default path won't be merged.
+
+I try to respond to PRs within 48 hours. If it's been longer, ping the thread —
+it means I missed the notification, not that the PR was rejected.
 
 ---
 

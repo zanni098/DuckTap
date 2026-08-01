@@ -64,10 +64,10 @@ lineage). Attach the GIF to tweet 1; media-first tweets travel further.
 > Openly inspired by @mvanhorn's Printing Press — same north star (muscle memory
 > for agents). PP is prompt-driven inside Claude Code with a great library;
 > DuckTap is the spec-first, deterministic, CI-friendly take. When to use which:
-> [comparison link]
+> https://github.com/zanni098/DuckTap/blob/main/docs/ducktap-vs-printing-press.md
 
 **5/**
-> It's v0.6 and early. If you maintain an API or live in an agent harness, I'd
+> It's v0.8 and early. If you maintain an API or live in an agent harness, I'd
 > love for you to point it at one spec and tell me what broke.
 > https://github.com/zanni098/DuckTap
 
