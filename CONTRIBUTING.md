@@ -17,7 +17,7 @@ API; check the [open issues](https://github.com/zanni098/DuckTap/issues?q=is%3Ao
 name: yourapi                          # required — lowercase, matches the filename
 display_name: Your API                 # human-readable name
 description: One sentence — what does this API do?
-category: devtools                     # see the list below
+category: developer                    # see the list below
 spec_url: https://example.com/openapi.yaml
 spec_format: yaml                      # json | yaml | har | sniff
 tier: official                         # official | community
