@@ -306,6 +306,11 @@ def catalog_print(
     e = get_entry(name)
     if not e:
         raise typer.BadParameter(f"unknown catalog entry: {name}")
+    if e.tier == "unsupported":
+        console.print(f"[red]Catalog entry '{name}' is marked unsupported and cannot be printed.[/]")
+        if e.notes:
+            console.print(f"[dim]{e.notes}[/]")
+        raise typer.Exit(2)
     src = e.source()
     hint = "browser-sniff" if e.sniff_url else None
     result = press(src, str(out), hint=hint, name=e.name)
