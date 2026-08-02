@@ -88,6 +88,21 @@ pip install "ducktap[all]"      # everything
 
 **Requires Python 3.11+.**
 
+### Shell Completion
+
+Enable shell tab-completion for `ducktap` commands (supports bash, zsh, fish, and PowerShell):
+
+```bash
+ducktap --install-completion
+```
+
+Or print the shell completion script:
+
+```bash
+ducktap --show-completion
+```
+
+
 <details>
 <summary>Developer install (contributing to DuckTap itself)</summary>
 
