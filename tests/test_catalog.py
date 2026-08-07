@@ -1,4 +1,7 @@
+from typer.testing import CliRunner
+
 from ducktap.catalog import get_entry, list_entries
+from ducktap.cli import app
 
 
 def test_catalog_loads():
@@ -13,3 +16,19 @@ def test_get_entry():
     assert e is not None
     assert e.spec_url
     assert e.source() == e.spec_url
+
+
+def test_known_unpressable_graphql_entries_are_unsupported():
+    for name in ("linear", "shopify"):
+        e = get_entry(name)
+        assert e is not None
+        assert e.tier == "unsupported"
+        assert e.notes
+
+
+def test_catalog_print_refuses_unsupported_entry():
+    result = CliRunner().invoke(app, ["catalog", "print", "linear"])
+
+    assert result.exit_code == 2
+    assert "marked unsupported" in result.output
+    assert "Traceback" not in result.output
