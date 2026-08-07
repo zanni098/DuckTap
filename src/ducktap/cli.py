@@ -32,7 +32,7 @@ app = typer.Typer(
         "API or website."
     ),
     no_args_is_help=True,
-    add_completion=False,
+    add_completion=True,
 )
 console = Console()
 
