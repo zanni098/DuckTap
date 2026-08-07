@@ -16,7 +16,7 @@ def test_cli_version_flag():
 
 
 def test_cli_help_flag_includes_completion():
-    result = runner.invoke(app, ["--help"])
+    result = runner.invoke(app, ["--help"], env={"COLUMNS": "120"})
     assert result.exit_code == 0
     assert "--install-completion" in result.output
     assert "--show-completion" in result.output
