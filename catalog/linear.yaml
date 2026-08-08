@@ -6,4 +6,5 @@ spec_url: https://raw.githubusercontent.com/linear/linear/master/packages/sdk/sr
 spec_format: graphql
 tier: unsupported
 homepage: https://linear.app/docs/api
-notes: The current URL points to generated SDK TypeScript, not a directly pressable GraphQL spec.
+notes: The current URL points to generated SDK TypeScript, not a directly pressable
+  GraphQL spec.

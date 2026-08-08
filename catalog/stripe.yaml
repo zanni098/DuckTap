@@ -1,8 +1,9 @@
 name: stripe
 display_name: Stripe API
-description: Payments, customers, subscriptions, invoices, products, prices.
+description: Payments, customers, subscriptions, invoices, products, prices, payouts.
 category: payments
 spec_url: https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json
 spec_format: json
 tier: official
 homepage: https://stripe.com/docs/api
+notes: Auth via STRIPE_TOKEN (secret API key, sk_test_… or sk_live_…).

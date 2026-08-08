@@ -1,11 +1,9 @@
 name: twilio
 display_name: Twilio
-description: Communication APIs — SMS, voice, messaging.
+description: SMS, voice, video, WhatsApp — messages, calls, numbers, lookups.
 category: social-and-messaging
 spec_url: https://raw.githubusercontent.com/twilio/twilio-oai/main/spec/json/twilio_api_v2010.json
 spec_format: json
 tier: official
 homepage: https://www.twilio.com/docs/usage/api
-notes: |
-  HTTP basic. Set TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN (from the Twilio
-  console homepage at https://console.twilio.com).
+notes: Auth via TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN (HTTP Basic).
