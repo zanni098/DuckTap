@@ -520,6 +520,40 @@ def smoke(
         raise typer.Exit(5)
 
 
+@app.command("list-tables")
+def list_tables_cmd(
+    db_path: Path = typer.Argument(Path("ducktap.db"), help="Path to DuckDB database file"),
+) -> None:
+    """List all tables in a DuckDB database file."""
+    if not db_path.exists():
+        console.print(f"[red]Database file does not exist:[/] {db_path}")
+        raise typer.Exit(code=1)
+
+    try:
+        import duckdb
+    except ImportError:
+        console.print("[red]duckdb package is required to inspect database files. Install via `pip install duckdb`.[/]")
+        raise typer.Exit(code=1)
+
+    try:
+        conn = duckdb.connect(str(db_path), read_only=True)
+        tables = [r[0] for r in conn.execute("SHOW TABLES").fetchall()]
+        conn.close()
+    except Exception as e:
+        console.print(f"[red]Error connecting or querying database:[/] {e}")
+        raise typer.Exit(code=1)
+
+    if not tables:
+        console.print(f"[yellow]No tables found in[/] {db_path}")
+        return
+
+    table = Table(title=f"Tables in {db_path.name}")
+    table.add_column("Table Name", style="cyan")
+    for t in tables:
+        table.add_row(t)
+    console.print(table)
+
+
 @app.command("emboss")
 def emboss_cmd(
     name: str = typer.Argument(..., help="CLI slug, e.g. petstore"),
