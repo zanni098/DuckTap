@@ -6,4 +6,5 @@ spec_url: https://shopify.dev/admin-graphql-api
 spec_format: graphql
 tier: unsupported
 homepage: https://shopify.dev/docs/api/admin-rest
-notes: The current URL points to an HTML documentation page, not a directly pressable GraphQL spec.
+notes: The current URL points to an HTML documentation page, not a directly pressable
+  GraphQL spec.
