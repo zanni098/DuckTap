@@ -25,12 +25,15 @@ def test_list_tables_success(tmp_path: Path):
     conn = duckdb.connect(str(db_path))
     conn.execute("CREATE TABLE users (id INT, name VARCHAR);")
     conn.execute("CREATE TABLE orders (id INT, total FLOAT);")
+    conn.execute("CREATE SCHEMA metrics;")
+    conn.execute("CREATE TABLE metrics.events (id INT);")
     conn.close()
 
     result = runner.invoke(app, ["list-tables", str(db_path)])
     assert result.exit_code == 0
-    assert "users" in result.output
-    assert "orders" in result.output
+    assert "main.users" in result.output
+    assert "main.orders" in result.output
+    assert "metrics.events" in result.output
 
 
 def test_list_tables_empty(tmp_path: Path):

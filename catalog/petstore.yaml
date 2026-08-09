@@ -6,4 +6,4 @@ spec_url: https://petstore3.swagger.io/api/v3/openapi.yaml
 spec_format: yaml
 tier: official
 homepage: https://petstore3.swagger.io
-notes: Used as DuckTap's smoke test. No auth required.
+notes: Used as DuckTap's smoke test. Auth is required for some operations.

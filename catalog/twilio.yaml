@@ -1,6 +1,6 @@
 name: twilio
 display_name: Twilio
-description: SMS, voice, video, WhatsApp — messages, calls, numbers, lookups.
+description: SMS, voice, WhatsApp — messages, calls, numbers, lookups.
 category: social-and-messaging
 spec_url: https://raw.githubusercontent.com/twilio/twilio-oai/main/spec/json/twilio_api_v2010.json
 spec_format: json

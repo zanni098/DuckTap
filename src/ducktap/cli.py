@@ -537,8 +537,11 @@ def list_tables_cmd(
 
     try:
         conn = duckdb.connect(str(db_path), read_only=True)
-        tables = [r[0] for r in conn.execute("SHOW TABLES").fetchall()]
-        conn.close()
+        try:
+            # SHOW ALL TABLES returns: database, schema, table_name, ...
+            tables = [f"{r[1]}.{r[2]}" for r in conn.execute("SHOW ALL TABLES").fetchall()]
+        finally:
+            conn.close()
     except Exception as e:
         console.print(f"[red]Error connecting or querying database:[/] {e}")
         raise typer.Exit(code=1)
