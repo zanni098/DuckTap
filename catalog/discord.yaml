@@ -1,12 +1,10 @@
 name: discord
 display_name: Discord
-description: Chat and community platform API — guilds, channels, messages, members.
+description: Discord v10 REST — guilds, channels, messages, members, roles, webhooks.
 category: social-and-messaging
 spec_url: https://raw.githubusercontent.com/discord/discord-api-spec/main/specs/openapi.json
 spec_format: json
 tier: official
 homepage: https://discord.com/developers/docs
-notes: |
-  Bot token from the Discord developer portal
-  (https://discord.com/developers/applications -> Bot). Set DISCORD_TOKEN.
-  Very large spec (1MB+).
+notes: |-
+  Auth via DISCORD_TOKEN (bot token).
