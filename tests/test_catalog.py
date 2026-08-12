@@ -26,7 +26,11 @@ def test_known_unpressable_graphql_entries_are_unsupported():
         assert e.notes
 
 
-def test_catalog_print_refuses_unsupported_entry():
+def test_catalog_print_refuses_unsupported_entry(monkeypatch):
+    def fail_if_pressed(*args, **kwargs):
+        raise AssertionError("press must not be called")
+
+    monkeypatch.setattr("ducktap.cli.press", fail_if_pressed)
     result = CliRunner().invoke(app, ["catalog", "print", "linear"])
 
     assert result.exit_code == 2
