@@ -533,7 +533,7 @@ def list_tables_cmd(
         import duckdb
     except ImportError:
         console.print("[red]duckdb package is required to inspect database files. Install via `pip install duckdb`.[/]")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
     try:
         conn = duckdb.connect(str(db_path), read_only=True)
@@ -544,7 +544,7 @@ def list_tables_cmd(
             conn.close()
     except Exception as e:
         console.print(f"[red]Error connecting or querying database:[/] {e}")
-        raise typer.Exit(code=1)
+        raise typer.Exit(code=1) from None
 
     if not tables:
         console.print(f"[yellow]No tables found in[/] {db_path}")

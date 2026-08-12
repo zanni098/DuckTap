@@ -1,7 +1,8 @@
 """Tests for `ducktap list-tables` subcommand."""
 from pathlib import Path
-from typer.testing import CliRunner
+
 import pytest
+from typer.testing import CliRunner
 
 from ducktap.cli import app
 
