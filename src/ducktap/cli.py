@@ -7,6 +7,7 @@ from typing import Any
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.table import Table
 
 from ducktap import __version__
@@ -526,7 +527,7 @@ def list_tables_cmd(
 ) -> None:
     """List all tables in a DuckDB database file."""
     if not db_path.exists():
-        console.print(f"[red]Database file does not exist:[/] {db_path}")
+        console.print(f"[red]Database file does not exist:[/] {escape(str(db_path))}")
         raise typer.Exit(code=1)
 
     try:
@@ -547,13 +548,13 @@ def list_tables_cmd(
         raise typer.Exit(code=1) from None
 
     if not tables:
-        console.print(f"[yellow]No tables found in[/] {db_path}")
+        console.print(f"[yellow]No tables found in[/] {escape(str(db_path))}")
         return
 
-    table = Table(title=f"Tables in {db_path.name}")
+    table = Table(title=f"Tables in {escape(db_path.name)}")
     table.add_column("Table Name", style="cyan")
     for t in tables:
-        table.add_row(t)
+        table.add_row(escape(t))
     console.print(table)
 
 
