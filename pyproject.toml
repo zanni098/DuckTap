@@ -47,8 +47,11 @@ sniff = [
 search = [
     "duckduckgo-search>=6.0",   # crowd-sniff web search
 ]
+db = [
+    "duckdb>=1.0",              # list-tables schema inspection
+]
 all = [
-    "ducktap[llm,sniff,search]",
+    "ducktap[llm,sniff,search,db]",
 ]
 dev = [
     "pytest>=8.0",
@@ -103,5 +106,5 @@ ignore_missing_imports = false
 # These are pulled in only by extras (llm/sniff/search) or ship no type info,
 # so they are absent from a `.[dev]` install and must not fail the type check.
 [[tool.mypy.overrides]]
-module = ["jsonref", "playwright.*", "duckduckgo_search", "mitmproxy.*", "litellm"]
+module = ["jsonref", "playwright.*", "duckduckgo_search", "mitmproxy.*", "litellm", "duckdb"]
 ignore_missing_imports = true
