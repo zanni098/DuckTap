@@ -210,6 +210,90 @@ def _parse_auth(name: str, sdef: dict[str, Any], project: str) -> AuthScheme:
     return AuthScheme(name=name, type="none", description=sdef.get("description", ""))
 
 
+def _flatten_schema(
+    schema: Any,
+    _depth: int = 0,
+    _stack: tuple[int, ...] = (),
+) -> dict[str, Any]:
+    """Resolve and flatten allOf, oneOf, and anyOf composition schemas.
+
+    - allOf: recursively merges all subschemas into a single flat object schema,
+      shallow-merging `properties` and unioning `required` fields.
+    - oneOf / anyOf: picks the first non-empty object branch (preferring discriminator
+      when present) to produce typed CLI parameters, avoiding crashes on polymorphic bodies.
+    """
+    if not isinstance(schema, dict):
+        return {} if schema is None else schema
+
+    if _depth >= _MAX_SCHEMA_DEPTH or id(schema) in _stack:
+        return dict(schema)
+
+    stack = (*_stack, id(schema))
+    out: dict[str, Any] = dict(schema)
+
+    # 1. Handle allOf composition
+    if "allOf" in schema and isinstance(schema["allOf"], list):
+        merged_props: dict[str, Any] = {}
+        merged_required: set[str] = set()
+
+        if isinstance(out.get("properties"), dict):
+            merged_props.update(out["properties"])
+        if isinstance(out.get("required"), (list, set, tuple)):
+            merged_required.update(out["required"])
+
+        for sub in schema["allOf"]:
+            if not isinstance(sub, dict):
+                continue
+            flat_sub = _flatten_schema(sub, _depth + 1, stack)
+            if isinstance(flat_sub.get("properties"), dict):
+                merged_props.update(flat_sub["properties"])
+            if isinstance(flat_sub.get("required"), (list, set, tuple)):
+                merged_required.update(flat_sub["required"])
+            if "type" not in out and flat_sub.get("type"):
+                out["type"] = flat_sub["type"]
+            if "description" not in out and flat_sub.get("description"):
+                out["description"] = flat_sub["description"]
+
+        if merged_props:
+            out["type"] = "object"
+            out["properties"] = merged_props
+        if merged_required:
+            out["required"] = sorted(merged_required)
+        out.pop("allOf", None)
+
+    # 2. Handle oneOf / anyOf composition
+    for keyword in ("oneOf", "anyOf"):
+        if keyword in out and isinstance(out[keyword], list):
+            branches = [b for b in out[keyword] if isinstance(b, dict)]
+            if branches:
+                chosen_branch = branches[0]
+                discriminator = out.get("discriminator")
+                if isinstance(discriminator, dict) and "propertyName" in discriminator:
+                    prop_name = discriminator["propertyName"]
+                    for b in branches:
+                        if prop_name in (b.get("properties") or {}) or prop_name in (b.get("required") or []):
+                            chosen_branch = b
+                            break
+
+                flat_chosen = _flatten_schema(chosen_branch, _depth + 1, stack)
+                for k, v in flat_chosen.items():
+                    if k not in out or not out[k]:
+                        out[k] = v
+                if "properties" in flat_chosen and isinstance(flat_chosen["properties"], dict):
+                    out.setdefault("properties", {})
+                    if isinstance(out["properties"], dict):
+                        out["properties"].update(flat_chosen["properties"])
+                    if "type" not in out:
+                        out["type"] = "object"
+                if "required" in flat_chosen and isinstance(flat_chosen["required"], (list, tuple, set)):
+                    out.setdefault("required", [])
+                    out["required"] = sorted(set(out.get("required") or []).union(set(flat_chosen["required"])))
+
+            out.pop(keyword, None)
+
+    return out
+
+
 def _parse_operation(
     method: str,
     path: str,
@@ -236,28 +320,30 @@ def _parse_operation(
         content = (rb.get("content") or {})
         # prefer JSON
         media: dict[str, Any] = content.get("application/json") or next(iter(content.values()), {})
-        schema = (media or {}).get("schema") or {}
+        raw_schema = (media or {}).get("schema") or {}
+        schema = _flatten_schema(raw_schema) if isinstance(raw_schema, dict) else raw_schema
         # flatten top-level object properties into individual body params for ergonomics
-        props = (schema.get("properties") or {}) if schema.get("type") == "object" else {}
-        required_set = set(schema.get("required") or [])
+        props = (schema.get("properties") or {}) if isinstance(schema, dict) and schema.get("type") == "object" else {}
+        required_set = set(schema.get("required") or []) if isinstance(schema, dict) else set()
         if props:
             for pname, pschema in props.items():
                 if not isinstance(pschema, dict):
                     continue
+                flat_pschema = _flatten_schema(pschema) if isinstance(pschema, dict) else pschema
                 params.append(Param(
                     name=pname, location="body",
-                    type=pschema.get("type", "string"),
+                    type=flat_pschema.get("type", "string") if isinstance(flat_pschema, dict) else "string",
                     required=pname in required_set,
-                    description=pschema.get("description", ""),
-                    enum=pschema.get("enum"),
-                    schema=pschema,
+                    description=flat_pschema.get("description", "") if isinstance(flat_pschema, dict) else "",
+                    enum=flat_pschema.get("enum") if isinstance(flat_pschema, dict) else None,
+                    schema=flat_pschema if isinstance(flat_pschema, dict) else None,
                 ))
         else:
             params.append(Param(
                 name="body", location="body", type="object",
                 required=bool(rb.get("required")),
                 description=rb.get("description", ""),
-                schema=schema,
+                schema=schema if isinstance(schema, dict) else None,
             ))
 
     responses: list[Response] = []
@@ -267,10 +353,12 @@ def _parse_operation(
         if is_v3:
             content = (rdef.get("content") or {})
             rmedia: dict[str, Any] = content.get("application/json") or next(iter(content.values()), {})
-            schema = (rmedia or {}).get("schema")
+            raw_schema = (rmedia or {}).get("schema")
+            schema = _flatten_schema(raw_schema) if isinstance(raw_schema, dict) else raw_schema
             ct = next(iter(content.keys()), "application/json") if content else "application/json"
         else:
-            schema = rdef.get("schema")
+            raw_schema = rdef.get("schema")
+            schema = _flatten_schema(raw_schema) if isinstance(raw_schema, dict) else raw_schema
             ct = "application/json"
         responses.append(Response(
             status=str(status), description=rdef.get("description", ""),
@@ -294,8 +382,10 @@ def _parse_operation(
 
 
 def _parse_param(raw: dict[str, Any], is_v3: bool) -> Param:
-    schema = raw.get("schema") if is_v3 else raw
+    schema = raw.get("schema") if is_v3 else (raw.get("schema") or raw)
     schema = schema or {}
+    if isinstance(schema, dict):
+        schema = _flatten_schema(schema)
     return Param(
         name=raw["name"],
         location=raw.get("in", "query"),

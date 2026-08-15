@@ -1,0 +1,59 @@
+openapi: "3.0.3"
+info:
+  title: "Polymorphic Payment Methods API"
+  version: "1.0.0"
+  description: "API testing oneOf / anyOf composition schemas"
+servers:
+  - url: "https://api.payments.example.com/v1"
+paths:
+  /pay:
+    post:
+      summary: "Process a payment with polymorphic payment method"
+      operationId: "process_payment"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/CardPayment"
+                - $ref: "#/components/schemas/BankPayment"
+              discriminator:
+                propertyName: method_type
+      responses:
+        "200":
+          description: "Payment processed"
+
+components:
+  schemas:
+    CardPayment:
+      type: object
+      properties:
+        method_type:
+          type: string
+          enum: ["card"]
+        card_number:
+          type: string
+          description: "Credit card number"
+        exp_month:
+          type: integer
+        exp_year:
+          type: integer
+      required:
+        - method_type
+        - card_number
+
+    BankPayment:
+      type: object
+      properties:
+        method_type:
+          type: string
+          enum: ["bank"]
+        routing_number:
+          type: string
+        account_number:
+          type: string
+      required:
+        - method_type
+        - routing_number
+        - account_number
