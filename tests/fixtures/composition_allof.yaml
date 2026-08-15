@@ -1,0 +1,89 @@
+openapi: "3.0.3"
+info:
+  title: "Payment Service API"
+  version: "1.0.0"
+  description: "API testing allOf composition schemas and inheritance"
+servers:
+  - url: "https://api.payments.example.com/v1"
+paths:
+  /charges:
+    post:
+      summary: "Create a charge"
+      operationId: "create_charge"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/BaseCharge"
+                - type: object
+                  properties:
+                    idempotency_key:
+                      type: string
+                      description: "Unique request idempotency token"
+                  required:
+                    - idempotency_key
+      responses:
+        "200":
+          description: "Charge created"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChargeResponse"
+  /special-charges:
+    post:
+      summary: "Create a special nested charge"
+      operationId: "create_special_charge"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SpecialChargeRequest"
+      responses:
+        "200":
+          description: "Special charge created"
+
+components:
+  schemas:
+    BaseCharge:
+      type: object
+      properties:
+        amount:
+          type: integer
+          description: "Amount in smallest currency unit"
+        currency:
+          type: string
+          description: "Three-letter ISO currency code"
+      required:
+        - amount
+        - currency
+
+    ExtendedCharge:
+      allOf:
+        - $ref: "#/components/schemas/BaseCharge"
+        - type: object
+          properties:
+            customer_id:
+              type: string
+              description: "Customer identifier"
+          required:
+            - customer_id
+
+    SpecialChargeRequest:
+      allOf:
+        - $ref: "#/components/schemas/ExtendedCharge"
+        - type: object
+          properties:
+            surcharge:
+              type: number
+              description: "Additional fee surcharge"
+
+    ChargeResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
