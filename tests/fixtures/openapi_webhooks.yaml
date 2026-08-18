@@ -1,0 +1,69 @@
+openapi: "3.1.0"
+info:
+  title: "Webhook Service"
+  version: "1.0.0"
+  description: "Service broadcasting webhooks to subscribers"
+servers:
+  - url: "https://api.example.com"
+paths:
+  /subscribe:
+    post:
+      summary: "Register a webhook subscription"
+      operationId: "createSubscription"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                url:
+                  type: string
+                events:
+                  type: array
+                  items:
+                    type: string
+              required:
+                - url
+      responses:
+        "201":
+          description: "Created"
+webhooks:
+  new_event:
+    post:
+      summary: "Notification of a new event"
+      operationId: "onNewEvent"
+      requestBody:
+        description: "Payload of the event"
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                id:
+                  type: string
+                event_type:
+                  type: string
+                timestamp:
+                  type: integer
+              required:
+                - id
+                - event_type
+      responses:
+        "200":
+          description: "Acknowledged"
+  order_canceled:
+    post:
+      summary: "Triggered when an order is canceled"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                order_id:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        "200":
+          description: "Received"
