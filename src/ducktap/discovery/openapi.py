@@ -106,6 +106,27 @@ class OpenAPIDiscoverer:
                     _parse_operation(method.upper(), path, op, path_level_params, is_v3)
                 )
 
+        # Webhooks (OpenAPI 3.1+)
+        if is_v3:
+            webhooks = doc.get("webhooks") or {}
+            if isinstance(webhooks, dict):
+                for name, methods in webhooks.items():
+                    if not isinstance(methods, dict):
+                        continue
+                    webhook_path = name if name.startswith("/") else f"/{name}"
+                    webhook_level_params = methods.get("parameters") or []
+                    for method, op in methods.items():
+                        if method.lower() not in {"get", "post", "put", "patch", "delete", "head", "options"}:
+                            continue
+                        if not isinstance(op, dict):
+                            continue
+                        parsed_webhook = _parse_operation(
+                            method.upper(), webhook_path, op, webhook_level_params, is_v3
+                        )
+                        if not parsed_webhook.tags:
+                            parsed_webhook.tags = ["webhooks"]
+                        spec.webhooks.append(parsed_webhook)
+
         return spec
 
 

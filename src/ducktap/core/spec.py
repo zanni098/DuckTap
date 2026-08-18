@@ -77,6 +77,7 @@ class APISpec(BaseModel):
     base_url: str = ""
     server_urls: list[str] = Field(default_factory=list)
     operations: list[Operation] = Field(default_factory=list)
+    webhooks: list[Operation] = Field(default_factory=list)
     auth_schemes: list[AuthScheme] = Field(default_factory=list)
     source: dict[str, Any] = Field(default_factory=dict)  # provenance: discovery method + source
     extensions: dict[str, Any] = Field(default_factory=dict)  # vendor extensions
@@ -117,6 +118,14 @@ class APISpec(BaseModel):
             strict=True,
         ):
             op.operation_id = unique_id
+
+        if self.webhooks:
+            for op, unique_id in zip(
+                self.webhooks,
+                uniquify([op.operation_id for op in self.webhooks]),
+                strict=True,
+            ):
+                op.operation_id = unique_id
         return self
 
     def by_tag(self) -> dict[str, list[Operation]]:
