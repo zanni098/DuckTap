@@ -266,32 +266,52 @@ mything = "your_plugin.module"   # module just calls plugins.register_discoverer
 See [`docs/PLUGINS.md`](docs/PLUGINS.md) and the sample at
 `src/ducktap/plugins/builtin/graphql_intro.py`.
 
-## Architecture
+## Architecture Diagram
 
-```
-input (URL | spec | HAR)
-        │
-        ▼
-  ┌─────────────┐
-  │  Discovery  │   openapi / har / browser-sniff / graphql (plugin) / ...
-  └──────┬──────┘
-         ▼
-   APISpec (Pydantic) ──── intermediate normalized representation
-         │
-         ▼
-  ┌─────────────┐
-  │  Generator  │   python-cli / mcp-server / skill / ...
-  └──────┬──────┘
-         ▼
-  artifacts/       (CLI pkg + MCP pkg + SKILL.md + cursor.mdc + tools.json)
-         │
-         ▼
-  ┌─────────────┐
-  │   Verify    │   scorecard + shipcheck + (optional) live smoke test
-  └─────────────┘
+The following diagram shows DuckTap's end-to-end discovery, normalization, generation, and verification pipeline.
+
+```mermaid
+flowchart TD
+    A["Input<br/>URL / OpenAPI spec / HAR / website"] --> B{Discovery}
+
+    B --> B1["ducktap.discovery.openapi<br/>OpenAPI 2/3"]
+    B --> B2["ducktap.discovery.har<br/>HAR file"]
+    B --> B3["ducktap.discovery.browser_sniff<br/>Playwright → HAR"]
+  B --> B4["ducktap.discovery.mitm_sniff<br/>mitmproxy → HAR"]
+  B --> B5["ducktap.plugins.builtin.graphql_intro<br/>GraphQL introspection"]
+
+    B1 --> C["APISpec (Pydantic)<br/>normalized intermediate representation"]
+    B2 --> C
+    B3 --> C
+    B4 --> C
+  B5 --> C
+
+    C --> D{Generators}
+
+    D --> D1["python_cli<br/>Click-based CLI"]
+    D --> D2["typescript_cli<br/>oclif CLI"]
+    D --> D3["go_cli<br/>cobra CLI"]
+    D --> D4["rust_cli<br/>clap CLI"]
+    D --> D5["mcp_server<br/>stdio MCP server"]
+    D --> D6["skill<br/>SKILL.md / .mdc / tools.json"]
+
+    D1 --> E["Generated artifacts<br/>target-specific output directories"]
+    D2 --> E
+    D3 --> E
+    D4 --> E
+    D5 --> E
+    D6 --> E
+
+    E --> F1["scorecard<br/>7-dimension quality grading"]
+    E --> F2["shipcheck<br/>structural + runtime checks"]
+    E --> F3["proof<br/>spec vs. generated behavior"]
+    E --> F4["optional live smoke test"]
+
+    G["Catalog<br/>YAML recipe loader"] -.-> A
+    H["Web UI<br/>FastAPI dashboard"] -.-> A
 ```
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+## The pipeline
 
 ## Roadmap
 
