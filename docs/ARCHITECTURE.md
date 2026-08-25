@@ -76,8 +76,6 @@ flowchart TD
     H["Web UI<br/>FastAPI dashboard"] -.-> A
 ```
 
-## The pipeline
-
 
 ## The pipeline
 
