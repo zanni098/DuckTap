@@ -266,32 +266,19 @@ mything = "your_plugin.module"   # module just calls plugins.register_discoverer
 See [`docs/PLUGINS.md`](docs/PLUGINS.md) and the sample at
 `src/ducktap/plugins/builtin/graphql_intro.py`.
 
+## Architecture Diagram
+
+The following diagram shows DuckTap's end-to-end discovery, normalization, generation, and verification pipeline.
+
 ## Architecture
 
-```
-input (URL | spec | HAR)
-        │
-        ▼
-  ┌─────────────┐
-  │  Discovery  │   openapi / har / browser-sniff / graphql (plugin) / ...
-  └──────┬──────┘
-         ▼
-   APISpec (Pydantic) ──── intermediate normalized representation
-         │
-         ▼
-  ┌─────────────┐
-  │  Generator  │   python-cli / mcp-server / skill / ...
-  └──────┬──────┘
-         ▼
-  artifacts/       (CLI pkg + MCP pkg + SKILL.md + cursor.mdc + tools.json)
-         │
-         ▼
-  ┌─────────────┐
-  │   Verify    │   scorecard + shipcheck + (optional) live smoke test
-  └─────────────┘
-```
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for a detailed overview of the project architecture, components, and data flow.
 
-See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Highlights:
+- **Core components** and how they interact
+- **Data flow** across the main pipeline
+- **CLI and backend** architecture
+- **Integration points** and external dependencies
 
 ## Roadmap
 
