@@ -72,6 +72,19 @@ def press_cmd(
     use_llm: bool = typer.Option(
         False, "--llm", help="Let an LLM sharpen the insight (needs the [llm] extra). "
                              "Off by default so a press stays reproducible."),
+    no_lock: bool = typer.Option(
+        False, "--no-lock",
+        help="Skip generating the pinned requirements.lock for the Python CLI."),
+    lock_online: bool = typer.Option(
+        False, "--lock-online",
+        help="Resolve requirements.lock against live PyPI with pip-tools "
+             "(falls back to the bundled pins when unavailable)."),
+    docker: bool = typer.Option(
+        False, "--docker",
+        help="Also generate a multi-stage Dockerfile for every generated CLI."),
+    docker_base: str = typer.Option(
+        "alpine", "--docker-base",
+        help="Base image for generated Dockerfiles: alpine (default) | slim."),
     no_llm: bool = typer.Option(
         False, "--no-llm", hidden=True,
         help="Deprecated: deterministic generation is now the default."),
@@ -80,7 +93,9 @@ def press_cmd(
     tgts = [t.strip() for t in targets.split(",") if t.strip()]
     result = press(source, str(out), hint=hint, targets=tgts, name=name,
                    archetype=archetype, insight=insight,
-                   use_llm=use_llm and not no_llm)
+                   use_llm=use_llm and not no_llm,
+                   no_lock=no_lock, lock_online=lock_online,
+                   docker=docker, docker_base=docker_base)
     sc = score(result.spec, str(out))
     console.print(f"[bold green]Pressed[/] [bold]{result.spec.name}[/] "
                   f"({len(result.spec.operations)} operations) -> [cyan]{out}[/]")

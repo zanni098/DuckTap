@@ -106,6 +106,7 @@ def autoload_builtins() -> None:
     from ducktap.discovery import openapi as _o  # noqa: F401
 
     # Generators
+    from ducktap.generator import dockerfile as _docker  # noqa: F401
     from ducktap.generator import go_cli as _go  # noqa: F401
     from ducktap.generator import mcp_server as _mcp  # noqa: F401
     from ducktap.generator import python_cli as _pc  # noqa: F401

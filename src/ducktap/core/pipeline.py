@@ -44,6 +44,10 @@ def press(
     archetype: str | None = None,
     insight: str | None = None,
     use_llm: bool = False,
+    no_lock: bool = False,
+    lock_online: bool = False,
+    docker: bool = False,
+    docker_base: str = "alpine",
     **opts: Any,
 ) -> PressResult:
     """One-shot: discover then generate all default targets.
@@ -55,6 +59,11 @@ def press(
     `use_llm` defaults to False: the same spec has to produce the same output
     for the manifest checksum, CI use and reviewable diffs to mean anything.
     Opt in per call (or with `ducktap press --llm`).
+
+    `no_lock` skips the pinned `requirements.lock` for the Python CLI;
+    `lock_online` resolves the lock against live PyPI with pip-tools.
+    `docker` appends the `dockerfile` target, which writes a multi-stage
+    Dockerfile into every generated language CLI (base `docker_base`).
     """
     plugins.autoload_builtins()
     spec = discover(source, hint=hint, name=name, **opts)
@@ -65,15 +74,26 @@ def press(
     spec.archetype = archetype or detect_archetype(spec)
     spec.insight = generate_noi(spec, override=insight, use_llm=use_llm)
 
-    targets = targets or ["python-cli", "mcp-server", "skill"]
+    targets = list(targets or ["python-cli", "mcp-server", "skill"])
+    # The Dockerfile generator inspects the language CLIs already on disk, so
+    # it has to run last.
+    if docker and "dockerfile" not in targets:
+        targets.append("dockerfile")
+
     gens = plugins.get_generators()
     Path(out_dir).mkdir(parents=True, exist_ok=True)
+    gen_opts: dict[str, Any] = {
+        **opts,
+        "no_lock": no_lock,
+        "lock_online": lock_online,
+        "docker_base": docker_base,
+    }
     artifacts: dict[str, list[str]] = {}
     for t in targets:
         if t not in gens:
             raise ValueError(f"unknown target: {t}. Have: {list(gens)}")
         plugins.emit("generate.start", target=t, spec=spec)
-        files = gens[t].generate(spec, out_dir, **opts)
+        files = gens[t].generate(spec, out_dir, **gen_opts)
         plugins.emit("generate.done", target=t, files=files)
         artifacts[t] = files
 

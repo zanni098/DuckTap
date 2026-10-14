@@ -26,6 +26,11 @@ from ducktap.core.naming import (
     safe_identifier,
 )
 from ducktap.core.spec import APISpec, Operation, Param
+from ducktap.generator.lockfile import (
+    render_requirements_lock,
+    render_requirements_txt,
+    resolve_lock_with_pip_tools,
+)
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 
@@ -217,6 +222,23 @@ class PythonCLIGenerator:
             dst.parent.mkdir(parents=True, exist_ok=True)
             dst.write_text(text, encoding="utf-8")
             written.append(str(dst))
+
+        # Dependency files. `requirements.txt` always ships; the pinned
+        # `requirements.lock` is what `--no-lock` turns off.
+        req = root / "requirements.txt"
+        req.write_text(render_requirements_txt(), encoding="utf-8")
+        written.append(str(req))
+
+        if not opts.get("no_lock"):
+            lock_text = None
+            if opts.get("lock_online"):
+                lock_text = resolve_lock_with_pip_tools()
+            if lock_text is None:
+                lock_text = render_requirements_lock()
+            lock = root / "requirements.lock"
+            lock.write_text(lock_text, encoding="utf-8")
+            written.append(str(lock))
+
         return written
 
 
