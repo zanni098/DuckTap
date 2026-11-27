@@ -11,6 +11,7 @@ must suppress it without touching ``requirements.txt``.
 from __future__ import annotations
 
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -104,6 +105,43 @@ def test_lock_online_falls_back_when_pip_tools_absent(monkeypatch, out_dir):
         press(str(FIXTURE), str(out_dir), name="petstore", lock_online=True)
     lock = (out_dir / "petstore-dt-cli" / "requirements.lock").read_text(encoding="utf-8")
     assert re.search(r"^click==", lock, re.MULTILINE)
+
+
+def test_requirements_txt_without_lock_does_not_recommend_it():
+    text = render_requirements_txt(with_lock=False)
+    assert "requirements.lock" not in text
+    for dep in DIRECT_DEPS:
+        assert dep in text
+
+
+def test_no_lock_readme_does_not_recommend_a_missing_lock(out_dir):
+    press(str(FIXTURE), str(out_dir), name="petstore", no_lock=True)
+    root = out_dir / "petstore-dt-cli"
+    assert "requirements.lock" not in (root / "README.md").read_text(encoding="utf-8")
+    assert "requirements.lock" not in (root / "requirements.txt").read_text(encoding="utf-8")
+    assert "pip install ." in (root / "README.md").read_text(encoding="utf-8")
+
+
+def test_locked_readme_documents_the_pinned_install(out_dir):
+    press(str(FIXTURE), str(out_dir), name="petstore")
+    readme = (out_dir / "petstore-dt-cli" / "README.md").read_text(encoding="utf-8")
+    assert "pip install -c requirements.lock ." in readme
+
+
+def test_online_lock_preserves_python_3_10_conditional_pin(monkeypatch, out_dir):
+    """A 3.11 resolver cannot see 3.10-only deps; the lock must still cover them."""
+    def fake_compile(cmd, **kwargs):
+        dst = Path(cmd[cmd.index("--output-file") + 1])
+        # Simulate pip-compile on Python 3.11: no exceptiongroup pin.
+        dst.write_text("anyio==4.16.0\nclick==8.5.1\n", encoding="utf-8")
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+
+    monkeypatch.setattr("shutil.which", lambda _: "pip-compile")
+    monkeypatch.setattr("ducktap.generator.lockfile.subprocess.run", fake_compile)
+    press(str(FIXTURE), str(out_dir), name="petstore", lock_online=True)
+    lock = (out_dir / "petstore-dt-cli" / "requirements.lock").read_text(encoding="utf-8")
+    assert lock.count("exceptiongroup==") == 1
+    assert 'exceptiongroup==1.3.2 ; python_version < "3.11"' in lock
 
 
 def test_bundled_pins_are_not_stale_vulnerable_versions():

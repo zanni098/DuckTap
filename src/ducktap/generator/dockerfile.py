@@ -107,7 +107,12 @@ class DockerfileGenerator:
             project = root / dirname
             if not project.exists():
                 continue
-            has_lock = (project / "requirements.lock").exists()
+            # A lock left over from a previous generation must not be used
+            # when this run explicitly opted out of lockfiles.
+            has_lock = (
+                not opts.get("no_lock")
+                and (project / "requirements.lock").exists()
+            )
             ctx = {
                 "cli_bin": binary,
                 "rust_bin": binary,

@@ -110,6 +110,34 @@ def test_python_dockerfile_tracks_no_lock(out_dir):
     assert "requirements.txt" in text
 
 
+def test_no_lock_regeneration_drops_stale_lock(out_dir):
+    """Regenerating in place with --no-lock must not leave an old lock behind."""
+    press(str(FIXTURE), str(out_dir), name="petstore")
+    root = out_dir / "petstore-dt-cli"
+    assert (root / "requirements.lock").exists()
+
+    press(
+        str(FIXTURE), str(out_dir), name="petstore",
+        targets=["python-cli"], no_lock=True, docker=True,
+    )
+    assert not (root / "requirements.lock").exists()
+    text = (root / "Dockerfile").read_text(encoding="utf-8")
+    assert "requirements.lock" not in text
+    assert "requirements.txt" in text
+
+
+def test_dockerfile_ignores_stale_lock_when_no_lock(out_dir):
+    """The dockerfile generator itself must honor --no-lock."""
+    press(str(FIXTURE), str(out_dir), name="petstore")
+    root = out_dir / "petstore-dt-cli"
+    assert (root / "requirements.lock").exists()
+
+    press(str(FIXTURE), str(out_dir), name="petstore", targets=["dockerfile"], no_lock=True)
+    text = (root / "Dockerfile").read_text(encoding="utf-8")
+    assert "requirements.lock" not in text
+    assert "requirements.txt" in text
+
+
 def test_dockerfile_alpine_is_default(out_dir):
     press(str(FIXTURE), str(out_dir), name="petstore", targets=["python-cli"], docker=True)
     text = (out_dir / "petstore-dt-cli" / "Dockerfile").read_text(encoding="utf-8")
@@ -240,9 +268,9 @@ def test_generated_typescript_image_builds_and_runs(tmp_path):
         capture_output=True, text=True, timeout=120,
     )
     assert run.returncode == 0, run.stderr
-    # The Node runtime sets the floor; 100MB leaves headroom for base updates.
+    # Issue #83 sets one <50MB budget for simple CLIs; no language exception.
     size = subprocess.run(
         ["docker", "image", "inspect", tag, "--format", "{{.Size}}"],
         capture_output=True, text=True, timeout=60,
     )
-    assert int(size.stdout.strip()) < 100 * 1024 * 1024
+    assert int(size.stdout.strip()) < 50 * 1024 * 1024
