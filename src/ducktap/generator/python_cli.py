@@ -12,6 +12,7 @@ command framework. The generated CLI:
 """
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -233,6 +234,14 @@ class PythonCLIGenerator:
             lock_text = None
             if opts.get("lock_online"):
                 lock_text = resolve_lock_with_pip_tools()
+                if lock_text is None:
+                    warnings.warn(
+                        "--lock-online could not resolve against PyPI "
+                        "(pip-compile missing or resolution failed); "
+                        "falling back to the bundled pins.",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
             if lock_text is None:
                 lock_text = render_requirements_lock()
             lock = root / "requirements.lock"

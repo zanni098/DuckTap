@@ -10,10 +10,12 @@ container images.
 - **Pinned lockfile for the generated Python CLI** ([#82](https://github.com/zanni098/DuckTap/issues/82)).
   The Python CLI now ships `requirements.txt` (direct deps) alongside
   `requirements.lock`, which pins the whole closure -- including transitive
-  dependencies -- so `pip install -r requirements.lock` is reproducible.
-  `--no-lock` skips the lock; `--lock-online` re-resolves it against live PyPI
-  with `pip-tools` (falling back to the bundled pins when unavailable, so a
-  press never needs the network).
+  dependencies. Install with `pip install -c requirements.lock .` so the CLI
+  and its pinned dependencies are installed together. `--no-lock` skips the
+  lock; `--lock-online` re-resolves it against live PyPI with `pip-tools` and
+  warns loudly before falling back to the bundled pins when unavailable, so a
+  press never needs the network. The bundled pins are audited with `pip-audit`
+  in CI.
 
 - **Multi-stage Dockerfile generator** ([#83](https://github.com/zanni098/DuckTap/issues/83)).
   New `dockerfile` target: `ducktap press <spec> --docker` writes a multi-stage

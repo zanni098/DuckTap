@@ -142,6 +142,22 @@ def test_rust_dockerfile_uses_crate_binary(out_dir):
     assert "target/release/petstore_dt_rs" in text
 
 
+def test_rust_dockerfile_uses_edition_2024_capable_toolchain(out_dir):
+    """Rust 1.82 cannot parse current crates.io manifests (edition2024)."""
+    press(str(FIXTURE), str(out_dir), name="petstore", targets=["rust-cli"], docker=True)
+    text = (out_dir / "petstore-dt-rs" / "Dockerfile").read_text(encoding="utf-8")
+    assert "FROM rust:1.91-alpine AS build" in text
+
+
+def test_dockerfile_target_is_always_last(out_dir):
+    """An explicit `dockerfile` first in targets must not emit empty output."""
+    press(
+        str(FIXTURE), str(out_dir), name="petstore",
+        targets=["dockerfile", "python-cli"], docker=True,
+    )
+    assert (out_dir / "petstore-dt-cli" / "Dockerfile").exists()
+
+
 # --- opt-in real builds ---------------------------------------------------
 
 @_docker_only
@@ -180,3 +196,53 @@ def test_generated_go_image_is_small(tmp_path):
     )
     assert size.returncode == 0, size.stderr
     assert int(size.stdout.strip()) < 50 * 1024 * 1024
+
+
+@_docker_only
+def test_generated_rust_image_builds_and_runs(tmp_path):
+    out = tmp_path / "out"
+    press(str(FIXTURE), str(out), name="petstore", targets=["rust-cli"], docker=True)
+    root = out / "petstore-dt-rs"
+    tag = "ducktap-petstore-rs:test"
+    build = subprocess.run(
+        ["docker", "build", "-t", tag, "."],
+        cwd=str(root), capture_output=True, text=True, timeout=1800,
+    )
+    assert build.returncode == 0, build.stderr[-2000:]
+    run = subprocess.run(
+        ["docker", "run", "--rm", tag, "--help"],
+        capture_output=True, text=True, timeout=120,
+    )
+    assert run.returncode == 0, run.stderr
+    size = subprocess.run(
+        ["docker", "image", "inspect", tag, "--format", "{{.Size}}"],
+        capture_output=True, text=True, timeout=60,
+    )
+    assert int(size.stdout.strip()) < 50 * 1024 * 1024
+
+
+@_docker_only
+def test_generated_typescript_image_builds_and_runs(tmp_path):
+    out = tmp_path / "out"
+    press(
+        str(FIXTURE), str(out), name="petstore",
+        targets=["typescript-cli"], docker=True,
+    )
+    root = out / "petstore-dt-ts"
+    tag = "ducktap-petstore-ts:test"
+    build = subprocess.run(
+        ["docker", "build", "-t", tag, "."],
+        cwd=str(root), capture_output=True, text=True, timeout=1800,
+    )
+    assert build.returncode == 0, build.stderr[-2000:]
+    run = subprocess.run(
+        ["docker", "run", "--rm", tag, "--help"],
+        capture_output=True, text=True, timeout=120,
+    )
+    assert run.returncode == 0, run.stderr
+    # The Node runtime sets the floor; 100MB leaves headroom for base updates.
+    size = subprocess.run(
+        ["docker", "image", "inspect", tag, "--format", "{{.Size}}"],
+        capture_output=True, text=True, timeout=60,
+    )
+    assert int(size.stdout.strip()) < 100 * 1024 * 1024

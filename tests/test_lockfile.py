@@ -98,8 +98,17 @@ def test_lock_files_are_recorded_as_artifacts(out_dir):
 
 
 def test_lock_online_falls_back_when_pip_tools_absent(monkeypatch, out_dir):
-    """Without pip-compile the bundled pins are used, not a crash."""
+    """Without pip-compile the bundled pins are used, but not silently."""
     monkeypatch.setattr("shutil.which", lambda _: None)
-    press(str(FIXTURE), str(out_dir), name="petstore", lock_online=True)
+    with pytest.warns(RuntimeWarning, match="falling back to the bundled pins"):
+        press(str(FIXTURE), str(out_dir), name="petstore", lock_online=True)
     lock = (out_dir / "petstore-dt-cli" / "requirements.lock").read_text(encoding="utf-8")
     assert re.search(r"^click==", lock, re.MULTILINE)
+
+
+def test_bundled_pins_are_not_stale_vulnerable_versions():
+    """Regression guard for the 2024 pin set that shipped known advisories."""
+    lock = render_requirements_lock()
+    for stale in ("anyio==4.8.0", "certifi==2024.8.30", "h11==0.14.0",
+                  "idna==3.10", "pygments==2.18.0"):
+        assert stale not in lock

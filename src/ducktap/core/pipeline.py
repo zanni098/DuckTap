@@ -79,6 +79,10 @@ def press(
     # it has to run last.
     if docker and "dockerfile" not in targets:
         targets.append("dockerfile")
+    # Also move an explicitly requested `dockerfile` target to the end, so the
+    # order a caller passes targets in cannot silently produce no Dockerfiles.
+    if "dockerfile" in targets:
+        targets = [t for t in targets if t != "dockerfile"] + ["dockerfile"]
 
     gens = plugins.get_generators()
     Path(out_dir).mkdir(parents=True, exist_ok=True)
