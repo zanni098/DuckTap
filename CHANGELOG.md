@@ -1,5 +1,28 @@
 # Changelog
 
+## Unreleased
+
+Two additions to the generated artifacts: reproducible Python installs and
+container images.
+
+### Added
+
+- **Pinned lockfile for the generated Python CLI** ([#82](https://github.com/zanni098/DuckTap/issues/82)).
+  The Python CLI now ships `requirements.txt` (direct deps) alongside
+  `requirements.lock`, which pins the whole closure -- including transitive
+  dependencies. Install with `pip install -c requirements.lock .` so the CLI
+  and its pinned dependencies are installed together. `--no-lock` skips the
+  lock; `--lock-online` re-resolves it against live PyPI with `pip-tools` and
+  warns loudly before falling back to the bundled pins when unavailable, so a
+  press never needs the network. The bundled pins are audited with `pip-audit`
+  in CI.
+
+- **Multi-stage Dockerfile generator** ([#83](https://github.com/zanni098/DuckTap/issues/83)).
+  New `dockerfile` target: `ducktap press <spec> --docker` writes a multi-stage
+  `Dockerfile` into every generated language CLI (Python, Go, Rust, TypeScript),
+  with a build stage and a minimal runtime stage. `--docker-base alpine` (the
+  default) produces small Alpine images; `--docker-base slim` uses Debian.
+
 ## 0.8.3 -- 2026-08-02
 
 One fix, but it removes a claim DuckTap should never have been making.

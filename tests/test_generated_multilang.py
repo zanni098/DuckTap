@@ -59,7 +59,12 @@ def _run(cmd: list[str], cwd: Path, env: dict | None = None, timeout: int = 600)
 def test_all_generators_render(tmp_path):
     """Every built-in generator is registered and renders to non-empty files."""
     out = tmp_path / "out"
-    targets = ["python-cli", "mcp-server", "skill", "go-cli", "rust-cli", "typescript-cli"]
+    # `dockerfile` must come last: it writes a Dockerfile into the language
+    # CLIs that already exist on disk.
+    targets = [
+        "python-cli", "mcp-server", "skill",
+        "go-cli", "rust-cli", "typescript-cli", "dockerfile",
+    ]
     result = press(str(FIXTURE), str(out), name="petstore", targets=targets)
     for t in targets:
         files = result.artifacts.get(t)

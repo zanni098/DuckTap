@@ -12,6 +12,7 @@ command framework. The generated CLI:
 """
 from __future__ import annotations
 
+import warnings
 from pathlib import Path
 from typing import Any
 
@@ -26,6 +27,11 @@ from ducktap.core.naming import (
     safe_identifier,
 )
 from ducktap.core.spec import APISpec, Operation, Param
+from ducktap.generator.lockfile import (
+    render_requirements_lock,
+    render_requirements_txt,
+    resolve_lock_with_pip_tools,
+)
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 
@@ -195,6 +201,7 @@ class PythonCLIGenerator:
             "query_params": _query_params,
             "body_params": _body_params,
             "header_params": _header_params,
+            "has_requirements_lock": not opts.get("no_lock"),
             **_archetype_table_ctx(spec.archetype),
         }
         written: list[str] = []
@@ -217,6 +224,41 @@ class PythonCLIGenerator:
             dst.parent.mkdir(parents=True, exist_ok=True)
             dst.write_text(text, encoding="utf-8")
             written.append(str(dst))
+
+        # Dependency files. `requirements.txt` always ships; the pinned
+        # `requirements.lock` is what `--no-lock` turns off.
+        req = root / "requirements.txt"
+        req.write_text(
+            render_requirements_txt(with_lock=not opts.get("no_lock")),
+            encoding="utf-8",
+        )
+        written.append(str(req))
+
+        if opts.get("no_lock"):
+            # Regenerating into an existing directory must not leave a lock
+            # from a previous run behind: every downstream consumer (Docker
+            # generator, README) keys off the file's existence.
+            stale_lock = root / "requirements.lock"
+            if stale_lock.exists():
+                stale_lock.unlink()
+        else:
+            lock_text = None
+            if opts.get("lock_online"):
+                lock_text = resolve_lock_with_pip_tools()
+                if lock_text is None:
+                    warnings.warn(
+                        "--lock-online could not resolve against PyPI "
+                        "(pip-compile missing or resolution failed); "
+                        "falling back to the bundled pins.",
+                        RuntimeWarning,
+                        stacklevel=2,
+                    )
+            if lock_text is None:
+                lock_text = render_requirements_lock()
+            lock = root / "requirements.lock"
+            lock.write_text(lock_text, encoding="utf-8")
+            written.append(str(lock))
+
         return written
 
 
